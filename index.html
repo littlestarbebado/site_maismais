@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101F38" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta
+      name="description"
+      content="D&B. — Clube Privado. Uma instituição de prestígio absolutamente desnecessário. Convite pessoal e intransmissível."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>D&B. — Clube Privado</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Netlify deteta estes formulários no HTML gerado, antes de executar React. -->
+    <form name="reserva" method="POST" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input name="bot-field" /><input name="nome" /><input name="experiencia" />
+      <input name="ideia" /><input name="data" /><input name="observacao" /><input
+        name="referencia"
+      />
+    </form>
+    <form name="livro" method="POST" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input name="bot-field" /><input name="nome" /><input name="tipo" /><input name="mensagem" />
+    </form>
+    <form name="inquerito" method="POST" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input name="bot-field" /><input name="nome" /><input name="comida" /><input
+        name="ambiente"
+      />
+      <input name="filme" /><input name="companhia" /><input name="abracos" /><input
+        name="repetir"
+      /><input name="mensagem" />
+    </form>
+    <noscript
+      >O clube precisa de JavaScript para abrir as portas. Ativa-o no navegador para consultar o
+      convite.</noscript
+    >
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
