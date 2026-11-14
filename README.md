@@ -1,111 +1,157 @@
-# D&B. — Clube Privado
+# D&B. 2.0 — The Ben Incident
 
-Um site demasiado elaborado para convidar uma pessoa para sair. React, TypeScript e Vite, com conteúdo em português de Portugal, fontes locais e sem serviços de análise de utilização.
+Quatro perguntas. Zero necessidade. Um convite do Daniel para o Ben.
+Redesign do projeto existente em React, TypeScript e Vite, em português de Portugal.
 
-## Iniciar
+## Executar
 
-Requer Node.js 22.12+ ou 24 LTS.
+Node.js 22.12+ ou 24 LTS. Em PowerShell, usar `npm.cmd` se a política bloquear `npm.ps1`.
 
 ```sh
 npm ci
 npm run dev
-```
-
-No PowerShell, se a política do sistema bloquear `npm.ps1`, usar `npm.cmd` em vez de `npm`.
-
-```sh
 npm test
 npm run build
 npm run preview
 ```
 
-O build fica em `dist/`. O servidor de desenvolvimento indica o endereço local, normalmente `http://127.0.0.1:5173`.
+`npm run build` verifica TypeScript, gera `dist/` e executa uma verificação que
+impede conteúdo privado, ficheiros de especificação e source maps no resultado.
+Não executa publicação. O servidor local apresenta o endereço na consola.
 
-## O que está implementado
+## Experiência
 
-- Convocatória animada e cinco perguntas com todas as respostas aceites e reações específicas.
-- Admissão, cartão reversível e exportação do cartão para PNG.
-- Classificação gastronómica fictícia e cronologia editáveis.
-- Cinco experiências, proposta de data, observações e bilhete PNG após entrega do pedido.
-- Livro de reclamações, sugestões e elogios; inquérito de satisfação com seis avaliações livres de 1 a 5.
-- Envio real por Netlify Forms ou Formspree, com validação, proteção contra duplo clique, honeypot, timeout e mensagens de erro. Não existe modo de sucesso simulado na aplicação.
-- Menu para telemóvel, navegação por teclado, estados anunciados, foco na mudança de pergunta e respeito por movimento reduzido.
-- Os detalhes escondidos pedidos, incluindo cinco cliques no logótipo.
+Entrada → quatro perguntas → resultados fictícios → convite para jantar.
+Leitura e interação pensadas para 60–120 segundos; sem espera forçada nem
+temporizador. O ritmo real depende de quem joga e ainda requer validação humana.
 
-## Configurar o clube
+- As 16 opções têm feedback próprio. É possível mudar a seleção antes de avançar.
+- Pontos iguais para qualquer opção: 420 + 690 + 900 + 330 = 2.340. Daniel recebe
+  80.000 por puro abuso de poder. A pontuação não determina o convite.
+- «Não, obrigado» na quarta pergunta termina imediatamente após «Terminar», sem
+  apresentar resultados ou insistir no convite. A recusa no convite também termina.
+- Os três memes originais estão em `public/memes/`. Surgem em escolhas específicas
+  das perguntas 1 e 3; não aparecem nas perguntas 2 e 4. Fecham por botão, Escape,
+  mudança de ecrã ou após 5,5 segundos. Não bloqueiam os controlos por baixo.
+- Som sintetizado no dispositivo, desligado por defeito. Movimento reduzido respeitado.
+- Aceitação gera um bilhete local com data a definir, exportável em PNG. **Nada é
+  enviado automaticamente ao Daniel.** A mensagem pode ser copiada; se a cópia for
+  bloqueada, continua visível para seleção manual.
+- Cartão reversível, PNG do cartão, reservas, reclamações e avaliações preservados
+  nos extras opcionais depois da aceitação. Não prolongam o percurso obrigatório.
+- Fontes Anton, Manrope e Cormorant Garamond distribuídas localmente por
+  `@fontsource`, com licenças OFL nos respetivos pacotes. Sem fontes ou imagens externas.
 
-Editar `src/config.ts` para alterar `club.stars` (0 a 3), `club.history`, as experiências e as perguntas. Não há disponibilidade inventada: cada data é uma proposta e precisa de confirmação pessoal pelo Daniel.
+Estrelas e histórico editáveis em `src/config.ts` (`club.stars`, `club.history`).
+Classificação inicial: ★ ☆ ☆. É uma brincadeira privada, sem ligação ao Guia Michelin.
 
-A admissão é uma interação narrativa, **não é autenticação**. O conteúdo faz parte do código público do site. Não colocar moradas, números de telefone, segredos ou outros dados privados na configuração. Para acesso efetivamente restrito, usar a proteção de acesso do alojamento.
+## Dados e conteúdo privado
 
-## Publicar no Netlify
+O jogo não grava respostas, aceitação, recusa ou progresso em armazenamento local.
+Recarregar reinicia a experiência. Não há contas, cookies, analytics nem contactos
+pessoais recolhidos pelo percurso principal. O progresso antigo `db-club-progress-v1`
+é ignorado. Os PNGs são gerados no navegador, sem upload.
 
-1. Importar este repositório no Netlify. `netlify.toml` configura `npm run build` e a pasta `dist`.
-2. Em **Forms**, ativar **Enable form detection** e publicar novamente. A deteção precisa de estar ativa durante o deploy.
-3. Confirmar a presença dos formulários `reserva`, `livro` e `inquerito`. As declarações HTML estão em `index.html`, pois o Netlify não deteta formulários criados apenas pelo React.
-4. Em **Forms → Submission notifications**, configurar as notificações de e-mail para o Daniel, para cada formulário. O endereço fica no painel do serviço, nunca no código.
-5. Manter `VITE_FORM_PROVIDER=netlify` (valor predefinido). Não são necessárias chaves no navegador.
-6. Fazer uma submissão de teste autorizada no site publicado, confirmar o registo no painel e a receção do e-mail. Verificar também as pastas de spam.
+As informações dos formulários opcionais só saem do dispositivo quando o utilizador
+os submete explicitamente a um serviço configurado. O texto é conservado após erro.
 
-O código envia os campos com `application/x-www-form-urlencoded` e `form-name`, conforme a [documentação de Netlify Forms](https://docs.netlify.com/manage/forms/setup/). As notificações têm [configuração própria no painel](https://docs.netlify.com/manage/forms/notifications/).
+O planeamento futuro está apenas na pasta local `.private/`, ignorada pelo Git e
+pelo upload Vercel. Não existe rota, QR code, import dinâmico ou conteúdo futuro em
+`src/`, `public/` ou `dist/`. Essa experiência deverá ter uma publicação independente.
+Guardar uma cópia privada dessa pasta: não acompanha clones do repositório.
 
-## Publicar no Vercel ou usar Formspree
+`noindex` reduz indexação; não é controlo de acesso. O Capítulo I pode ser lido por
+quem tiver acesso ao alojamento. Publicar apenas `dist/`, nunca a raiz do projeto.
 
-1. Criar um formulário no Formspree e verificar o endereço de receção do Daniel no serviço. Um formulário pode receber os três tipos de mensagem; `form-name` distingue-os.
-2. No painel do alojamento, definir:
-
-```env
-VITE_FORM_PROVIDER=formspree
-VITE_FORMSPREE_ENDPOINT=https://formspree.io/f/IDENTIFICADOR_DO_FORMULARIO
-```
-
-3. Importar o repositório no Vercel; `vercel.json` define o build e a pasta de saída.
-4. Publicar de novo depois de alterar variáveis: Vite incorpora-as durante o build.
-5. Fazer a mesma verificação de entrega real no painel e no e-mail. As definições de spam, limites e restrições de domínio pertencem ao serviço.
-
-Para testar a integração localmente, copiar `.env.example` para `.env.local` e configurar Formspree. Um envio neste modo é **real**. O endpoint Formspree é um identificador público, não uma credencial. Nunca colocar chaves privadas em variáveis `VITE_*`. Consultar a [documentação de submissões AJAX do Formspree](https://help.formspree.io/articles/building-your-form/submit-forms-with-javascript-ajax).
-
-Sem serviço configurado, os formulários mostram um erro claro e conservam o texto. O servidor local do Vite não processa Netlify Forms. Os testes automáticos usam respostas simuladas sem transmitir mensagens. A confirmação significa aceitação pelo serviço de formulários, não que o Daniel já leu a mensagem ou confirmou a data.
-
-## Dados e privacidade
-
-- Só `stage` e `question` do processo de admissão são guardados em `localStorage`, na chave `db-club-progress-v1`. As escolhas do questionário não são guardadas nem enviadas.
-- Pedidos, datas, observações, mensagens e avaliações ficam apenas em memória durante a interação e seguem para o serviço selecionado quando se envia o respetivo formulário.
-- Não há cookies, analytics, dados pessoais de contacto nem fontes carregadas de servidores externos.
-- Cartões e bilhetes são gerados localmente com Canvas e guardados em PNG. A imagem do cartão inclui também o texto do verso. Em dispositivos móveis, a imagem pode abrir no gestor de transferências do navegador.
-- Recarregar a página limpa o bilhete e os formulários. Só a admissão é retomada. Para reiniciar a admissão, limpar os dados deste site no navegador.
-- `noindex` reduz a indexação, mas não impede acesso pelo link. A retenção e eliminação das submissões são geridas no Netlify/Formspree.
-
-## Verificação
-
-`npm test` verifica o percurso de admissão, as 20 respostas possíveis, restauro de progresso, detalhes escondidos, reservas, validação, preservação de texto após erro, envio de mensagens, avaliações de 1 sem penalização, contratos HTTP e falhas de rede. Nenhum teste envia mensagens reais.
-
-### Testes num navegador real
-
-Com `npm run dev` ativo na porta 5173 e sem configuração Formspree local, executar noutro terminal:
+## Testar no navegador
 
 ```powershell
+npm.cmd run build
 $env:BROWSER_CHANNEL='msedge'
 npm.cmd run test:browser
 ```
 
-Usa o Edge instalado. Noutros sistemas, instalar Chromium com `npx playwright install chromium` e omitir `BROWSER_CHANNEL`. `TEST_URL` permite alterar o endereço da primeira verificação. O segundo teste inicia e encerra automaticamente um servidor isolado na porta 5174 e intercepta os envios: não contacta o serviço real.
+O primeiro teste inicia automaticamente um **preview do build de produção** na
+porta 5175. Verifica larguras 320, 390, 768 e 1440, as 16 respostas, teclado, foco,
+recusa no quiz e no convite, clipboard, memes originais, PNG do bilhete e cartão,
+movimento reduzido e acessibilidade com axe. Não contacta serviços externos.
+`TEST_URL` permite usar outro servidor já iniciado; nesse caso o script não o gere.
 
-Os testes verificam larguras de 320, 390, 768 e 1440 píxeis, menu móvel, questionário, restauro da admissão, falhas e confirmações de formulário, PNGs e acessibilidade com axe. As capturas, PNGs e relatório ficam em `artifacts/` (ignorada pelo Git). A análise automática de acessibilidade complementa, mas não substitui, a verificação manual.
+O segundo teste inicia Vite isoladamente na porta 5174, com configuração de teste
+Formspree. Interceta todos os envios: verifica erro/repetição de reserva, PNG,
+reclamação e avaliações de 1/5 sem enviar mensagens reais.
+Ambos encerram os servidores que iniciam.
 
-Antes de partilhar o link publicado, confirmar num telemóvel: abertura do convite, cinco respostas, frente/verso e PNG do cartão, proposta de reserva e PNG do bilhete, reclamação/sugestão e inquérito. Validar a entrega real dos três formulários e a receção das notificações.
+Noutros sistemas, usar um Chromium instalado para Playwright e omitir
+`BROWSER_CHANNEL`. Capturas, PNGs e relatórios estão em `artifacts/`, ignorada pelo
+Git. A análise automática e a emulação de larguras não substituem um teste num
+iPhone/Android real ou uma revisão com leitor de ecrã.
+
+## Preparação para publicação
+
+**Não fazer commit, push ou deploy sem autorização explícita do Daniel.**
+
+Existem `netlify.toml` e `vercel.json`, ambos com `npm run build` e saída `dist`.
+Não foi encontrada ligação local a um projeto de alojamento (`.netlify/` ou
+`.vercel/`). Isso não confirma nem exclui uma integração configurada num painel remoto.
+Nenhum URL público foi verificado. Não foram criadas contas ou projetos.
+
+O Capítulo I funciona sem variáveis de ambiente. Para publicar depois de autorizado:
+
+1. Escolher Netlify ou Vercel e autenticar a conta a usar.
+2. Associar/importar este repositório ou selecionar um projeto existente no painel.
+3. Confirmar comando `npm run build`, saída `dist`, Node compatível e público pretendido.
+4. Rever o build e autorizar separadamente qualquer commit/push necessário. Uma
+   integração Git pode publicar automaticamente quando se faz push.
+5. Executar o deploy apenas após autorização. Guardar o URL devolvido pelo serviço.
+
+Não há React Router nem URLs internas: os ecrãs são estados React na raiz. Não é
+necessário um rewrite SPA. Não adicionar rotas ocultas para conteúdo futuro.
+
+### Formulários opcionais
+
+Para manter os extras sem serviço, os envios apresentam erro honesto. O convite e
+o bilhete principal continuam totalmente funcionais com a cópia da mensagem.
+
+**Netlify:** ativar deteção Forms e confirmar `reserva`, `livro`, `inquerito` no
+painel após build. As declarações HTML estão em `index.html`. Configurar notificações
+para o Daniel no painel. Usar `VITE_FORM_PROVIDER=netlify` (predefinição).
+
+**Vercel/Formspree:** criar e verificar um formulário no serviço; definir:
+
+```env
+VITE_FORM_PROVIDER=formspree
+VITE_FORMSPREE_ENDPOINT=https://formspree.io/f/IDENTIFICADOR
+```
+
+Voltar a construir após alterações. O endpoint é público; nunca colocar chaves
+privadas em `VITE_*`. `.env.example` é apenas um modelo, não prova que o serviço
+está configurado. Sucesso de formulário significa aceitação pelo serviço, não
+leitura pelo Daniel nem confirmação da data. A entrega real ainda não foi testada.
+
+### Checklist após deploy autorizado
+
+- Abrir o URL real no computador e num telemóvel, com e sem movimento reduzido.
+- Confirmar fontes, os três memes, quatro perguntas, resultados e ambas as recusas.
+- Aceitar, guardar o PNG e copiar a mensagem; confirmar data/local por definir.
+- Recarregar a raiz e verificar teclado, foco e ausência de cortes horizontais.
+- Confirmar que não existe conteúdo futuro no HTML, JS, assets ou caminhos públicos.
+- Se Forms estiver configurado, autorizar uma submissão real e confirmar registo
+  no painel e receção da notificação. Os testes locais não demonstram entrega real.
 
 ## Organização
 
 ```text
-src/
-  App.tsx                 Página, navegação e detalhes escondidos
-  config.ts               Estrelas, histórico, experiências e questionário
-  components/             Admissão, reservas, secretaria e elementos comuns
-  lib/forms.ts            Transporte, validação e datas de Lisboa
-  lib/download.ts         Exportação PNG no navegador
-  styles.css              Identidade, layout, responsividade e movimento
-  test/                   Testes automáticos sem envios externos
+src/App.tsx                    Percurso principal e convite
+src/config.ts                  Perguntas, reações, memes, estrelas e histórico
+src/incident.css               Identidade luxury punk, responsividade e movimento
+src/styles.css                 Base e componentes preservados dos extras
+src/components/Admission.tsx   Cartão de sócio reutilizado
+src/components/MemeReaction.tsx Reações contextuais e dismiss
+src/lib/download.ts            Exportação PNG por Canvas
+src/lib/forms.ts               Transporte e validação de formulários opcionais
+src/test/                      Testes unitários e de integração
+scripts/browser-check.mjs      Percurso, capturas, PNGs e acessibilidade
+scripts/booking-check.mjs      Formulários com rede intercetada
+scripts/check-public-build.mjs Verificação de isolamento do build
 ```
-
-As fontes Cormorant Garamond e Manrope são distribuídas por `@fontsource`; os respetivos pacotes incluem as licenças OFL.

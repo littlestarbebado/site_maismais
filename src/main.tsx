@@ -6,9 +6,10 @@ import '@fontsource/cormorant-garamond/latin-500.css';
 import '@fontsource/manrope/latin-400.css';
 import '@fontsource/manrope/latin-500.css';
 import '@fontsource/manrope/latin-600.css';
+import '@fontsource/anton/latin-400.css';
 import App from './App';
 import './styles.css';
-import './editorial.css';
+import './incident.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

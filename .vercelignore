@@ -1,0 +1,4 @@
+.private/
+artifacts/
+.git/
+src/test/

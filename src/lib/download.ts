@@ -34,26 +34,27 @@ export async function downloadDocument(
     wrapped.reduce((height, line) => height + 75 + line.rows.length * 42, 0) +
     notes.length * 32;
   const ctx = scratch;
-  ctx.fillStyle = '#101F38';
+  ctx.fillStyle = '#F4EAD8';
   ctx.fillRect(0, 0, width, canvas.height);
-  ctx.strokeStyle = '#D7BB7B';
+  ctx.fillStyle = '#1748D4';
+  ctx.fillRect(width - 25, 0, 25, canvas.height);
+  ctx.strokeStyle = '#101F38';
   ctx.lineWidth = 2;
   ctx.strokeRect(35, 35, width - 70, canvas.height - 70);
-  ctx.fillStyle = '#D7BB7B';
-  ctx.font = '64px "Cormorant Garamond", Georgia, serif';
+  ctx.fillStyle = '#101F38';
+  ctx.font = '64px Anton, Impact, sans-serif';
   ctx.fillText('D&B.', 100, 125);
-  ctx.font = '20px Manrope, sans-serif';
-  ctx.fillText('CLUBE PRIVADO  /  DOCUMENTO PESSOAL', 100, 175);
-  ctx.fillStyle = '#F4EAD8';
-  ctx.font = '76px "Cormorant Garamond", Georgia, serif';
+  ctx.font = '20px "Courier New", monospace';
+  ctx.fillText('EDIÇÃO LIMITADA A UMA PESSOA.  /  DOCUMENTO PESSOAL', 100, 175);
+  ctx.font = '72px Anton, Impact, sans-serif';
   ctx.fillText(title, 100, 290);
   let y = 360;
   for (const line of wrapped) {
-    ctx.fillStyle = '#D7BB7B';
-    ctx.font = '18px Manrope, sans-serif';
+    ctx.fillStyle = '#233E60';
+    ctx.font = '18px "Courier New", monospace';
     ctx.fillText(line.label.toUpperCase(), 100, y);
     y += 44;
-    ctx.fillStyle = '#F4EAD8';
+    ctx.fillStyle = '#101F38';
     ctx.font = '30px Manrope, sans-serif';
     for (const row of line.rows) {
       ctx.fillText(row, 100, y);
@@ -61,7 +62,7 @@ export async function downloadDocument(
     }
     y += 31;
   }
-  ctx.fillStyle = '#D7BB7B';
+  ctx.fillStyle = '#233E60';
   ctx.font = '22px Manrope, sans-serif';
   for (const row of notes) {
     ctx.fillText(row, 100, y + 10);

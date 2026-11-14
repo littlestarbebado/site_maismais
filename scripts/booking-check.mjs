@@ -45,9 +45,6 @@ try {
     viewport: { width: 390, height: 844 },
     reducedMotion: 'reduce',
   });
-  await context.addInitScript(() =>
-    localStorage.setItem('db-club-progress-v1', JSON.stringify({ stage: 'admitted', question: 4 })),
-  );
   let fail = true;
   const submissions = [];
   await context.route('**/*', async (route) => {
@@ -65,6 +62,14 @@ try {
   });
   const page = await context.newPage();
   await page.goto('http://127.0.0.1:5174');
+  await page.locator('.entry-copy button').click();
+  for (let i = 0; i < 4; i++) {
+    await page.getByRole('radio').nth(1).check();
+    await page.locator('.quiz-bottom button').click();
+  }
+  await page.locator('.results-screen > button').click();
+  await page.locator('.invite-actions > button').first().click();
+  await page.locator('.club-extras > summary').click();
   await page.getByRole('radio', { name: /Tens Uma Ideia Melhor/ }).check();
   await page
     .getByLabel('A tua ideia', { exact: true })
@@ -84,9 +89,12 @@ try {
   await page.getByRole('heading', { name: 'Pedido recebido.' }).waitFor();
   assert.equal(await page.getByText('À espera de confirmação', { exact: true }).count(), 1);
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: /Guardar bilhete/ }).click();
+  await page
+    .locator('.confirmation')
+    .getByRole('button', { name: /Guardar bilhete/ })
+    .click();
   await mkdir('artifacts', { recursive: true });
-  await (await download).saveAs('artifacts/bilhete.png');
+  await (await download).saveAs('artifacts/reserva-bilhete.png');
   assert.equal((await readFile('artifacts/bilhete.png')).subarray(1, 4).toString(), 'PNG');
   await page.locator('.confirmation').screenshot({ path: 'artifacts/confirmation-mobile.png' });
   const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
@@ -98,7 +106,7 @@ try {
     .getByLabel('A tua mensagem', { exact: true })
     .fill('Teste automatizado, sem envio externo.');
   await page.getByRole('button', { name: /Entregar à direção/ }).click();
-  await page.getByText(/A tua mensagem foi entregue ao Daniel/).waitFor();
+  await page.getByText(/A direção recebeu a tua reclamação/).waitFor();
   await page.getByRole('button', { name: /Inquérito de satisfação/ }).click();
   for (const name of [
     'Comida',
@@ -116,7 +124,7 @@ try {
     submissions.map((s) => s['form-name']),
     ['reserva', 'reserva', 'livro', 'inquerito'],
   );
-  assert.equal(await page.evaluate(() => localStorage.length), 1);
+  assert.equal(await page.evaluate(() => localStorage.length), 0);
   console.log(
     'PASS: reserva com erro e repetição, bilhete PNG, reclamações, avaliações, acessibilidade. 0 envios externos.',
   );

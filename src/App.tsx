@@ -1,371 +1,464 @@
-import { useEffect, useRef, useState } from 'react';
-import { Admission, readProgress, saveProgress, type Progress } from './components/Admission';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { MemberCard } from './components/Admission';
 import { Reservation } from './components/Reservation';
 import { Feedback } from './components/Feedback';
-import { Arrow, Eyebrow } from './components/UI';
-import { club } from './config';
+import { DownloadButton } from './components/UI';
+import { club, pointsPerQuestion, questions } from './config';
 import { MemeReactionProvider, useMemeReaction } from './components/MemeReaction';
+import { downloadDocument } from './lib/download';
+
+type Stage = 'entry' | 'quiz' | 'results' | 'invite' | 'accepted' | 'declined';
+export const confirmationMessage =
+  'Daniel, aceito o convite para o jantar n.º 002. Agora temos de combinar a data e o local!';
 
 export default function App() {
   return (
     <MemeReactionProvider>
-      <ClubPage />
+      <Incident />
     </MemeReactionProvider>
   );
 }
 
-function ClubPage() {
-  const { show: showMeme, dismiss: dismissMeme } = useMemeReaction();
-  const [progress, setProgress] = useState(readProgress);
-  const [opened, setOpened] = useState(progress.stage !== 'invitation');
-  const [notice, setNotice] = useState('');
-  const [menuOpen, setMenuOpen] = useState(false);
-  const clicks = useRef(0);
-  const noticeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(noticeTimer.current), []);
-  function showNotice(text: string) {
-    setNotice(text);
-    clearTimeout(noticeTimer.current);
-    noticeTimer.current = setTimeout(() => setNotice(''), 6500);
+function Incident() {
+  const [stage, setStage] = useState<Stage>('entry');
+  const [question, setQuestion] = useState(0);
+  const [selection, setSelection] = useState<number | null>(null);
+  const [sound, setSound] = useState(false);
+  const [soundError, setSoundError] = useState('');
+  const [copyStatus, setCopyStatus] = useState('');
+  const heading = useRef<HTMLHeadingElement>(null);
+  const audio = useRef<AudioContext | null>(null);
+  const { show, dismiss } = useMemeReaction();
+  const q = questions[question];
+  const score = pointsPerQuestion
+    .slice(0, question + (selection === null ? 0 : 1))
+    .reduce((a, b) => a + b, 0);
+
+  useEffect(() => {
+    if (stage !== 'entry') heading.current?.focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [stage, question]);
+  useEffect(
+    () => () => {
+      void audio.current?.close();
+    },
+    [],
+  );
+
+  async function beep() {
+    if (!sound) return;
+    try {
+      audio.current ??= new AudioContext();
+      await audio.current.resume();
+      const oscillator = audio.current.createOscillator();
+      const gain = audio.current.createGain();
+      oscillator.connect(gain);
+      gain.connect(audio.current.destination);
+      oscillator.frequency.setValueAtTime(480, audio.current.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(180, audio.current.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.045, audio.current.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audio.current.currentTime + 0.15);
+      oscillator.start();
+      oscillator.stop(audio.current.currentTime + 0.16);
+    } catch {
+      setSound(false);
+      setSoundError('Som indisponível neste navegador. A palhaçada continua.');
+    }
   }
-  function updateProgress(next: Progress) {
-    dismissMeme();
-    setProgress(next);
-    saveProgress(next);
-    if (next.stage === 'admitted') showMeme('fallesi');
+  function go(next: Stage) {
+    dismiss();
+    setStage(next);
   }
-  function openInvitation() {
-    setOpened(true);
-    requestAnimationFrame(() => {
-      const section = document.getElementById('admissao');
-      section?.scrollIntoView({
-        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-          ? 'instant'
-          : 'smooth',
-        block: 'start',
-      });
-      const heading = section?.querySelector<HTMLElement>('h2');
-      heading?.setAttribute('tabindex', '-1');
-      heading?.focus({ preventScroll: true });
-    });
+  function next() {
+    if (selection === null) return;
+    dismiss();
+    if (question === 3) go(selection === 3 ? 'declined' : 'results');
+    else {
+      setQuestion(question + 1);
+      setSelection(null);
+    }
   }
-  const admitted = progress.stage === 'admitted';
+
   return (
-    <>
+    <div className={`incident stage-${stage}`}>
       <a className="skip-link" href="#conteudo">
         Saltar para o conteúdo
       </a>
-      <header className="site-header">
+      <header className="incident-header">
+        <span className="incident-logo" aria-label="D e B">
+          D<span>&</span>B<span>.</span>
+        </span>
+        <span className="edition">
+          UMA PRODUÇÃO DO DANIEL <br />
+          <b>EXCLUSIVAMENTE PARA O BEN.</b>
+        </span>
         <button
-          className="logo"
-          aria-label="D&B. — Clube Privado"
+          className="sound-toggle"
+          aria-pressed={sound}
           onClick={() => {
-            clicks.current++;
-            if (clicks.current % 5 === 0) {
-              showNotice('Cinco cliques. Ben, arranja um hobby. Eu claramente não tenho.');
-              showMeme('sanidade');
-            }
+            setSound(!sound);
+            setSoundError('');
           }}
         >
-          D<span>&</span>B.
+          <span aria-hidden="true">{sound ? '▥' : '⌁'}</span> SOM {sound ? 'LIGADO' : 'DESLIGADO'}
         </button>
-        <div className="header-caption">
-          CLUBE PRIVADO<span>CRITÉRIO DE ENTRADA: SER O BEN.</span>
-        </div>
-        <button
-          className="menu-toggle text-button"
-          aria-expanded={menuOpen}
-          aria-controls="main-navigation"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          {menuOpen ? 'Fechar −' : 'Menu +'}
-        </button>
-        <nav
-          id="main-navigation"
-          aria-label="Navegação principal"
-          className={menuOpen ? 'is-open' : ''}
-        >
-          <a href="#clube" onClick={() => setMenuOpen(false)}>
-            O caso
-          </a>
-          <a href="#gastronomia" onClick={() => setMenuOpen(false)}>
-            À mesa
-          </a>
-          {admitted && (
-            <a href="#secretaria" onClick={() => setMenuOpen(false)}>
-              Secretaria
-            </a>
-          )}
-          <button
-            className="nav-invite"
-            onClick={() => {
-              setMenuOpen(false);
-              if (admitted) document.getElementById('reservas')?.scrollIntoView();
-              else openInvitation();
-            }}
-          >
-            {admitted ? 'Pedir reserva' : 'O teu convite'} <Arrow diagonal />
-          </button>
-        </nav>
       </header>
-      <main id="conteudo">
-        <section className="hero" id="clube">
-          <div className="hero-content">
-            <Eyebrow>
-              <span className="status-dot" /> Processo n.º 0001 · Tu, outra vez
-            </Eyebrow>
-            <h1>
-              <span className="hero-ben">Ben,</span>
-              <span className="hero-again">outra vez</span>
-              <em>tu?</em>
-              <span className="title-asterisk" aria-hidden="true">
-                *
-              </span>
-            </h1>
-            <p className="hero-description">
-              Após o primeiro encontro, a direção reuniu-se para decidir se valia a pena repetir.
-            </p>
-            <p className="hero-aside">Infelizmente, sim.</p>
-            <button className="button button-gold" onClick={openInvitation}>
-              {opened
-                ? admitted
-                  ? 'Ver cartão de sócio'
-                  : 'Voltar a esta palhaçada'
-                : 'Ver o que este gajo quer'}{' '}
-              <Arrow />
-            </button>
-          </div>
-          <aside className="case-file" aria-label="O processo do Ben">
-            <div className="case-binding" aria-hidden="true" />
-            <div className="case-meta">
-              <span>D&B. / ARQUIVO PESSOAL</span>
+      {soundError && <p role="status">{soundError}</p>}
+      <main id="conteudo" tabIndex={-1}>
+        {stage === 'entry' && (
+          <section className="entry-screen">
+            <div className="entry-top mono">
               <span>
-                CONFIDENCIAL
-                <br />
-                MAS ESTÁ NUM SITE
+                <i className="live-dot" /> CAPÍTULO I — O INTERROGATÓRIO
+              </span>
+              <span>EDIÇÃO 001 / TIRAGEM: TU</span>
+            </div>
+            <div className="entry-grid">
+              <div className="entry-copy">
+                <h1 className="entry-title">
+                  <span>BEN.</span>
+                  <span>
+                    QUE <em>CHATICE.</em>
+                  </span>
+                </h1>
+                <p className="entry-description">
+                  Fiz um site para te fazer uma pergunta. Infelizmente, primeiro tens de responder a
+                  quatro completamente inúteis.
+                </p>
+                <button className="punk-button primary" onClick={() => go('quiz')}>
+                  COMEÇAR ESTA PALHAÇADA <span aria-hidden="true">↗</span>
+                </button>
+                <p className="entry-duration mono">01–02 MINUTOS DA TUA VIDA. ZERO DEVOLUÇÕES.</p>
+              </div>
+              <div className="poster" aria-label="Quatro perguntas, zero necessidade">
+                <div className="poster-meta mono">
+                  <span>
+                    D&B. / DEPARTAMENTO <br />
+                    DE IDEIAS QUESTIONÁVEIS
+                  </span>
+                  <span>
+                    N.º <br />
+                    0001
+                  </span>
+                </div>
+                <div className="poster-star" aria-hidden="true">
+                  ✳
+                </div>
+                <p className="poster-type">
+                  MUITO <br />
+                  <span>APARATO.</span> <br />
+                  PARA QUÊ?
+                </p>
+                <span className="poster-sticker">
+                  100% <br />
+                  <small>DESNECESSÁRIO</small>
+                </span>
+                <div className="poster-bottom">
+                  <span className="barcode" aria-hidden="true" />
+                  <span className="mono">
+                    4 PERGUNTAS. <br />0 NECESSIDADE.
+                  </span>
+                </div>
+                <span className="poster-scribble">
+                  podia ter sido <br />
+                  uma mensagem.
+                </span>
+              </div>
+            </div>
+            <div className="entry-bottom">
+              <p>
+                Este site foi desenvolvido por alguém com problemas em demonstrar afeto normalmente.
+              </p>
+              <span className="mono">
+                DESIGN: DANIEL. <br />
+                CULPA: BEN.
               </span>
             </div>
-            <Eyebrow>Assunto: repetir a dose</Eyebrow>
-            <div className="case-number" aria-hidden="true">
-              02<span>º</span>
+          </section>
+        )}
+
+        {stage === 'quiz' && (
+          <section className={`quiz-screen transition-${question}`} key={question}>
+            <div className="screen-meta mono">
+              <span>O INTERROGATÓRIO / SEM VALOR LEGAL</span>
+              <span aria-live="polite">{score.toLocaleString('pt-PT')} PONTOS INVENTADOS</span>
             </div>
-            <p className="case-title">
-              encontro.
-              <br />
-              <em>Mesmo suspeito.</em>
-            </p>
-            <span className="rubber-stamp">
-              APROVADO
-              <br />
-              <small>contra todo o bom senso</small>
-            </span>
-            <div className="case-verdict">
-              <span>VOTOS A FAVOR: 1</span>
-              <span>ERA SÓ EU.</span>
-            </div>
-            <p className="scribbled-note">
-              Podia ter mandado
-              <br />
-              «queres vir cá?»
-              <br />
-              <span>Mas pronto.</span>
-            </p>
-          </aside>
-          <div className="hero-bottom">
-            <span>* SIM, FIZ MESMO UM SITE.</span>
-            <span>NÃO, NÃO TINHA MAIS NADA PARA FAZER.</span>
-            <a href="#gastronomia" aria-label="Descobrir o clube">
-              ↓
-            </a>
-          </div>
-        </section>
-        <section className="evidence-strip" aria-label="Estatísticas absolutamente não científicas">
-          <p>
-            <strong>01</strong>
-            <span>
-              convidado
-              <br />e já dá trabalho
-            </span>
-          </p>
-          <p>
-            <strong>00</strong>
-            <span>
-              concorrentes
-              <br />à vaga do Daniel
-            </span>
-          </p>
-          <p>
-            <strong>
-              97<span>%</span>
-            </strong>
-            <span>
-              pose
-              <br />
-              3% saber o que faço
-            </span>
-          </p>
-          <span className="statistics-note">Fonte: inventei.</span>
-        </section>
-        {opened && <Admission progress={progress} onProgress={updateProgress} />}
-        <section className="section suspects" aria-labelledby="suspects-title">
-          <div className="suspects-intro">
-            <Eyebrow>Os envolvidos / sem direito a anonimato</Eyebrow>
-            <h2 id="suspects-title">
-              Duas pessoas.
-              <br />
-              <em>Este aparato todo.</em>
-            </h2>
-            <p>
-              Um queria combinar um jantar.
-              <br />O outro ainda está a ler isto.
-            </p>
-          </div>
-          <article className="profile profile-ben">
-            <span className="profile-index">01 / O PROBLEMA</span>
-            <h3>
-              Ben<span>®</span>
-            </h3>
-            <p>
-              Principal causa de
-              <br />
-              distração do Daniel.
-            </p>
-            <div className="profile-footnote">
-              Competências: aparecer.
-              <br />E aparentemente chega.
-            </div>
-          </article>
-          <article className="profile profile-daniel">
-            <span className="profile-index">02 / O PROBLEMA MAIOR</span>
-            <h3>Daniel</h3>
-            <p>
-              Chef, diretor e<br />
-              funcionário do mês.
-            </p>
-            <div className="profile-footnote">
-              Eleito por: Daniel.
-              <br />
-              Auditoria independente: Daniel.
-            </div>
-            <button className="profile-note" onClick={() => showMeme('sanidade')}>
-              estou ótimo, juro ↗
-            </button>
-          </article>
-        </section>
-        <section className="gastronomy-section" id="gastronomia">
-          <div className="section gastronomy">
-            <div className="gastronomy-copy">
-              <Eyebrow>02 / Um elogio e ficou assim</Eyebrow>
-              <h2>
-                <span className="gastronomy-numeral">{club.stars}</span>{' '}
-                {club.stars === 1 ? 'estrela.' : 'estrelas.'}
-                <br />
-                <em>0 humildade.</em>
-              </h2>
-              <p>O chef continua convencido de que merece mais.</p>
-              <p className="source">Disseste que estava bom. Agora aguenta.</p>
-              <div className="restaurant-state">
-                <span className="status-dot" />
-                <p>
-                  <strong>Cozinha aberta. Ego também.</strong>
-                  <br />
-                  Reclamações sobre o sal são aceites. Com algum sofrimento.
-                </p>
+            <div className="quiz-progress" aria-label={`Pergunta ${question + 1} de 4`}>
+              <span className="question-index">
+                0{question + 1}
+                <small>/04</small>
+              </span>
+              <div className="progress-segments" aria-hidden="true">
+                {questions.map((_, i) => (
+                  <span key={i} className={i <= question ? 'filled' : ''} />
+                ))}
               </div>
             </div>
-            <div className="gastronomy-record">
-              <div
-                className="stars"
-                role="img"
-                aria-label={`${club.stars} de 3 estrelas, classificação fictícia`}
-              >
-                {Array.from({ length: 3 }, (_, i) => (
-                  <span key={i} className={i < club.stars ? 'earned' : ''} aria-hidden="true">
-                    {i < club.stars ? '★' : '☆'}
+            <h1 ref={heading} tabIndex={-1} className="quiz-title">
+              {q.title}
+            </h1>
+            <fieldset className="quiz-answers">
+              <legend className="sr-only">{q.title}</legend>
+              {q.options.map((option, i) => (
+                <label key={option} className={`quiz-answer ${selection === i ? 'chosen' : ''}`}>
+                  <input
+                    type="radio"
+                    name={`question-${question}`}
+                    checked={selection === i}
+                    onChange={() => {
+                      setSelection(i);
+                      void beep();
+                      const meme = q.memes[i];
+                      if (meme) show(meme);
+                      else dismiss();
+                    }}
+                  />
+                  <span className="option-letter" aria-hidden="true">
+                    {'ABCD'[i]}
                   </span>
-                ))}
-              </div>
-              <div className="rating-caption">AS OUTRAS DUAS ESTÃO PRESAS NA ALFÂNDEGA.</div>
-              <ol className="dinner-history">
-                {club.history.map((item) => (
-                  <li key={item.number}>
-                    <span className="dinner-number">{item.number}</span>
-                    <div>
-                      <span className="dinner-label">JANTAR N.º {item.number}</span>
-                      <h3>{item.title}</h3>
-                      <p>{item.detail}</p>
-                    </div>
-                    <span className="dinner-status">{item.status}</span>
-                  </li>
-                ))}
-              </ol>
-              <p className="gastronomy-disclaimer">
-                Uma brincadeira interna. Sem qualquer ligação ao Guia Michelin.
+                  <span>{option}</span>
+                  <span className="option-mark" aria-hidden="true">
+                    {selection === i ? '↗' : '+'}
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            <div className="quiz-bottom">
+              <p className="quiz-reaction" role="status">
+                {selection === null
+                  ? 'Escolhe. O rigor científico é nenhum.'
+                  : q.reactions[selection]}
               </p>
+              <button className="punk-button primary" disabled={selection === null} onClick={next}>
+                {question === 3 ? (selection === 3 ? 'TERMINAR' : 'VER O VEREDITO') : 'SEGUINTE'}{' '}
+                <span aria-hidden="true">→</span>
+              </button>
             </div>
-          </div>
-        </section>
-        {admitted ? (
-          <>
-            <Reservation />
-            <Feedback />
-          </>
-        ) : (
-          <section className="section members-only">
-            <span className="small-seal" aria-hidden="true">
-              D&B.
-            </span>
-            <Eyebrow>Não fiz isto para ficares só a olhar</Eyebrow>
-            <h2>
-              O jantar não se
-              <br />
-              <em>marca sozinho, Ben.</em>
-            </h2>
-            <p>Cinco perguntas. Depois podes escolher quando me aturas.</p>
-            <button className="button button-navy" onClick={openInvitation}>
-              {progress.stage === 'quiz' ? 'Acabar com isto' : 'Vá, mostra lá'} <Arrow />
+            <p className="mono quiz-note">
+              SEM RESPOSTAS CERTAS. SEM PRESSA. SEM QUALQUER UTILIDADE.
+            </p>
+          </section>
+        )}
+
+        {stage === 'results' && (
+          <section className="results-screen">
+            <p className="mono">AUDITORIA INDEPENDENTE FEITA PELO DANIEL</p>
+            <h1 ref={heading} tabIndex={-1} className="display-title">
+              RESULTADOS <br />
+              <em>OFICIAIS*</em>
+            </h1>
+            <div className="scoreboard">
+              <div>
+                <span>BEN</span>
+                <strong>
+                  2.340<small>PONTOS</small>
+                </strong>
+              </div>
+              <div className="winner">
+                <span>
+                  DANIEL <i aria-hidden="true">✳</i>
+                </span>
+                <strong>
+                  80.000<small>PONTOS</small>
+                </strong>
+              </div>
+            </div>
+            <p className="results-question">Como é que o Daniel ganhou sem jogar?</p>
+            <p>Não sabemos. O sistema foi desenvolvido por ele.</p>
+            <button className="punk-button light" onClick={() => go('invite')}>
+              PRONTO, O QUE É QUE QUERES? <span aria-hidden="true">↗</span>
             </button>
+            <p className="mono results-note">* PONTOS FICTÍCIOS. NÃO SERVEM PARA NADA. MESMO.</p>
+          </section>
+        )}
+
+        {stage === 'invite' && (
+          <section className="invite-screen">
+            <div className="star-burst" aria-hidden="true">
+              {Array.from({ length: 12 }, (_, i) => (
+                <span key={i} style={{ '--i': i } as CSSProperties}>
+                  ✦
+                </span>
+              ))}
+            </div>
+            <p className="mono">FIM DO INTERROGATÓRIO. ERA ISTO.</p>
+            <p className="invite-prelude">Pronto, Ben.</p>
+            <h1 ref={heading} tabIndex={-1} className="display-title">
+              QUERES VIR <br />
+              <em>JANTAR COMIGO</em> <br />
+              OUTRA VEZ?
+            </h1>
+            <p className="invite-description">
+              Prometo tentar manter a estrela. <br />A minha reputação está em jogo.
+            </p>
+            <div className="invite-details mono">
+              <span>DATA A DEFINIR</span>
+              <span>LOCAL A COMBINAR</span>
+              <span>JANTAR N.º 002</span>
+            </div>
+            <div className="invite-actions">
+              <button className="punk-button primary" onClick={() => go('accepted')}>
+                SIM, VÁ. MARCA LÁ ISSO. <span aria-hidden="true">↗</span>
+              </button>
+              <button className="punk-button secondary" onClick={() => go('declined')}>
+                AGORA NÃO, OBRIGADO.
+              </button>
+            </div>
+          </section>
+        )}
+
+        {stage === 'accepted' && (
+          <section className="accepted-screen">
+            <p className="mono">JANTAR N.º 002 / CONVITE ACEITE</p>
+            <h1 ref={heading} tabIndex={-1} className="display-title">
+              PRONTO. <br />
+              <em>AGORA TEMOS DE</em> <br />
+              COMBINAR ISSO.
+            </h1>
+            <div className="confirmation-grid">
+              <article className="dinner-ticket" aria-label="Bilhete de jantar">
+                <div className="ticket-head">
+                  <span>D&B.</span>
+                  <span className="mono">
+                    GUARDA ISTO. <br />
+                    OU FAZ UM PRINT.
+                  </span>
+                </div>
+                <h2>
+                  JANTAR <em>n.º 002</em>
+                </h2>
+                <dl>
+                  {[
+                    ['Convidado', 'Ben'],
+                    ['Anfitrião', 'Daniel'],
+                    ['Experiência', 'Jantar n.º 002'],
+                    ['Data', 'A definir'],
+                    ['Estado', 'Convite aceite'],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <dt>{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <div className="ticket-foot">
+                  <span className="barcode" aria-hidden="true" />
+                  <span className="mono">
+                    VÁLIDO PARA UMA <br />
+                    PESSOA ESPECÍFICA.
+                  </span>
+                </div>
+              </article>
+              <div className="ticket-actions">
+                <p>
+                  O bilhete é teu. <br />
+                  <em>Agora falta avisar o chef.</em>
+                </p>
+                <DownloadButton
+                  onDownload={() =>
+                    downloadDocument(
+                      'JANTAR N.º 002',
+                      [
+                        { label: 'Convidado', value: 'Ben' },
+                        { label: 'Anfitrião', value: 'Daniel' },
+                        { label: 'Experiência', value: 'Jantar n.º 002' },
+                        { label: 'Data', value: 'A definir' },
+                        { label: 'Estado', value: 'Convite aceite' },
+                      ],
+                      'DB-jantar-002-Ben.png',
+                      'Local a combinar. Convite aceite neste dispositivo; confirmação não enviada ao Daniel.',
+                    )
+                  }
+                >
+                  Guardar bilhete · PNG
+                </DownloadButton>
+                <button
+                  className="punk-button primary"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(confirmationMessage);
+                      setCopyStatus('Mensagem copiada. Agora envia-a ao Daniel.');
+                    } catch {
+                      setCopyStatus(
+                        'Não foi possível copiar. Seleciona a mensagem abaixo e envia-a ao Daniel.',
+                      );
+                    }
+                  }}
+                >
+                  COPIAR MENSAGEM PARA O DANIEL <span aria-hidden="true">↗</span>
+                </button>
+                <p className="delivery-note">
+                  Nada foi enviado automaticamente. Copia esta mensagem e envia-a ao Daniel:
+                </p>
+                <p className="copy-message">{confirmationMessage}</p>
+                <p role="status">{copyStatus}</p>
+              </div>
+            </div>
+            <details className="club-extras">
+              <summary>
+                EXTRAS ABSOLUTAMENTE DESNECESSÁRIOS <span aria-hidden="true">+</span>
+              </summary>
+              <div className="extras-content">
+                <h2>Já que fiz o site.</h2>
+                <MemberCard />
+                <Reservation />
+                <Feedback />
+              </div>
+            </details>
+          </section>
+        )}
+
+        {stage === 'declined' && (
+          <section className="declined-screen">
+            <p className="mono">FIM. SEM DRAMA.</p>
+            <h1 ref={heading} tabIndex={-1} className="display-title">
+              TUDO <br />
+              <em>BEM, BEN.</em>
+            </h1>
+            <p>
+              O convite fica sem efeito. <br />
+              Obrigado por teres passado por aqui.
+            </p>
+            <p className="mono">Podes fechar esta página.</p>
           </section>
         )}
       </main>
-      <footer>
-        <div className="footer-top">
-          <div>
-            <span className="footer-logo">D&B.</span>
-            <p>
-              Tudo isto para te dizer:
-              <br />
-              anda cá jantar, pá.
-            </p>
-          </div>
-          <div className="footer-contact">
-            <Eyebrow>Não há linha de apoio. Há um Daniel.</Eyebrow>
-            <button
-              className="text-button"
-              onClick={() =>
-                showNotice('Olá. Sou o Daniel. Sim, também atendo o telefone imaginário.')
-              }
-            >
-              Falar com o responsável <Arrow diagonal />
-            </button>
-          </div>
+      <footer className="incident-footer">
+        <div className="star-record">
+          <span
+            className="footer-stars"
+            role="img"
+            aria-label={`${club.stars} de 3 estrelas, classificação fictícia`}
+          >
+            {Array.from({ length: 3 }, (_, i) => (i < club.stars ? '★' : '☆')).join(' ')}
+          </span>
+          <strong>
+            {club.stars} {club.stars === 1 ? 'ESTRELA' : 'ESTRELAS'}. 0 HUMILDADE.
+          </strong>
+          <span>Primeiro jantar aprovado. O chef continua convencido de que merece mais.</span>
         </div>
-        <div className="footer-bottom">
-          <p>
-            © 2026 D&B. Todos os direitos reservados.
-            <br className="mobile-break" /> Todos os funcionários são o Daniel.
-          </p>
-          <span>UM SITE INTEIRO. UMA MENSAGEM TERIA CHEGADO.</span>
+        <details className="history">
+          <summary>O CADASTRO DO CHEF ↗</summary>
+          <ol>
+            {club.history.map((item) => (
+              <li key={item.number}>
+                <strong>
+                  {item.number} / {item.title}
+                </strong>
+                <p>
+                  {item.detail} — {item.status}
+                </p>
+              </li>
+            ))}
+          </ol>
+          <p>Brincadeira privada. Sem ligação ao Guia Michelin.</p>
+        </details>
+        <div className="footer-credit mono">
+          <span>© D&B. 2026</span>
+          <span>LOOKS EXPENSIVE. SOUNDS UNHINGED.</span>
+          <span>FEITO COM DEMASIADO TEMPO.</span>
         </div>
       </footer>
-      <div className={`notice ${notice ? 'visible' : ''}`} role="status" aria-live="polite">
-        {notice}
-        {notice && (
-          <button onClick={() => setNotice('')} aria-label="Fechar mensagem">
-            ×
-          </button>
-        )}
-      </div>
-    </>
+    </div>
   );
 }
