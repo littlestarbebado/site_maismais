@@ -13,15 +13,27 @@ async function files(dir) {
   return result;
 }
 const output = await files('dist');
-const forbidden =
-  /namorar|cap[ií]tulo\s*(?:ii|2)\b|chapter[-_ ]?ii|\.private|preciso de tempo|a tua avalia[çc][ãa]o ainda n[ãa]o terminou/i;
+const forbiddenContent =
+  /namorar|cap[ií]tulo\s*(?:ii|2)\b|chapter[-_ ]?ii|preciso de tempo|a tua avalia[çc][ãa]o ainda n[ãa]o terminou/i;
+const forbiddenPath = /(?:^|[\\/])\.private(?:[\\/]|$)|release-plan/i;
 for (const path of output) {
   assert(!/\.map$|\.md$|\.env|release-plan/i.test(path), `Forbidden output: ${path}`);
-  assert(!forbidden.test(relative('dist', path)), `Private filename: ${path}`);
+  assert(!forbiddenPath.test(relative('dist', path)), `Private filename: ${path}`);
+  assert(
+    !/whatsapp image|kiss bish/i.test(relative('dist', path)),
+    `Private image shipped: ${path}`,
+  );
   if (/\.(?:html|css|js|json|txt|svg)$/i.test(path)) {
-    assert(!forbidden.test(await readFile(path, 'utf8')), `Private content found in ${path}`);
+    assert(
+      !forbiddenContent.test(await readFile(path, 'utf8')),
+      `Private content found in ${path}`,
+    );
   }
 }
+assert(
+  output.some((path) => relative('dist', path) === 'admin.html'),
+  'Admin entry is missing',
+);
 for (const name of ['coracao', 'sanidade', 'fallesi']) {
   const source = await readFile(`public/memes/${name}.png`);
   assert(source.equals(await readFile(`dist/memes/${name}.png`)), `Meme altered: ${name}`);

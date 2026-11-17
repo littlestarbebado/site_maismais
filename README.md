@@ -48,10 +48,51 @@ Classificação inicial: ★ ☆ ☆. É uma brincadeira privada, sem ligação 
 
 ## Dados e conteúdo privado
 
-O jogo não grava respostas, aceitação, recusa ou progresso em armazenamento local.
-Recarregar reinicia a experiência. Não há contas, cookies, analytics nem contactos
-pessoais recolhidos pelo percurso principal. O progresso antigo `db-club-progress-v1`
-é ignorado. Os PNGs são gerados no navegador, sem upload.
+O jogo não guarda respostas, aceitação, recusa ou progresso em armazenamento local.
+Recarregar reinicia a experiência. O percurso principal não tem login, cookies
+publicitários, fingerprinting ou recolha de contactos. Os PNGs são gerados no
+navegador, sem upload.
+
+### Telemetria opcional do Capítulo I
+
+A telemetria está desligada por defeito. Quando ativada, regista apenas eventos
+permitidos pelo esquema, índices das perguntas/opções e um UUID aleatório guardado
+em `sessionStorage` durante a sessão do separador. Não envia texto livre, datas
+propostas, nome, IP ou localização; não recolhe dados do Capítulo II. A indicação
+discreta no rodapé só aparece quando esta telemetria está ativa. Falhas de rede não
+interrompem o jogo e são reportadas na consola sem incluir os dados do evento.
+
+O painel é servido em `/admin.html`; o ficheiro HTML não é um segredo. A leitura é
+protegida pelo Supabase Auth e por RLS, que só permite selecionar eventos a utilizadores
+com `app_metadata.role = chapter_i_admin`. Não há registo público. A chave `anon`/
+publishable é pública e tem apenas permissões limitadas por RLS; nunca definir uma
+chave `service_role`/secret numa variável `VITE_*`.
+
+Para configurar:
+
+1. Criar um projeto Supabase e rever região, retenção e política de logs.
+2. Executar `supabase/migrations/20261117000100_chapter_i_telemetry.sql` no SQL Editor.
+   A migração cria apenas objetos `chapter_i_*`, permite inserções com payload limitado
+   sem leitura anónima e cria uma vista do funil protegida por RLS.
+3. Criar no Supabase Auth a conta administrativa, sem ativar registo público, e definir
+   em `app_metadata` o papel `{"role":"chapter_i_admin"}`. Terminar e voltar a iniciar
+   sessão depois de alterar o papel para renovar o JWT.
+4. Copiar `.env.example` para `.env.local` e preencher `VITE_SUPABASE_URL` e
+   `VITE_SUPABASE_ANON_KEY` com a URL e a chave pública do projeto. Manter
+   `VITE_TELEMETRY_ENABLED=false` até testar Auth, RLS e a indicação de privacidade;
+   mudar para `true` apenas no ambiente que deve registar eventos.
+5. Para produção, definir as mesmas variáveis no painel do alojamento e executar um
+   novo build. As variáveis `VITE_*` são incluídas no frontend; só a chave pública
+   `anon`/publishable pode ser usada aí.
+
+Os eventos guardam o timestamp do servidor, UUID de sessão e dados mínimos. A
+aplicação não envia IP/localização no payload; como qualquer serviço HTTPS, o
+Supabase recebe o IP de rede para processar o pedido e poderá registá-lo nos logs
+operacionais. Se “sem IP” também proibir esse processamento pelo fornecedor, não
+ativar a telemetria até confirmar a política e retenção desses logs com o Supabase.
+Sem credenciais, o painel apresenta apenas o estado “não configurado” e a telemetria
+não envia pedidos; a autenticação e as políticas RLS reais ainda exigem configuração
+e validação no projeto Supabase.
 
 As informações dos formulários opcionais só saem do dispositivo quando o utilizador
 os submete explicitamente a um serviço configurado. O texto é conservado após erro.
@@ -61,8 +102,9 @@ pelo upload Vercel. Não existe rota, QR code, import dinâmico ou conteúdo fut
 `src/`, `public/` ou `dist/`. Essa experiência deverá ter uma publicação independente.
 Guardar uma cópia privada dessa pasta: não acompanha clones do repositório.
 
-`noindex` reduz indexação; não é controlo de acesso. O Capítulo I pode ser lido por
-quem tiver acesso ao alojamento. Publicar apenas `dist/`, nunca a raiz do projeto.
+`noindex` reduz indexação; não é controlo de acesso. O Capítulo I pode ser lido por quem tiver acesso ao alojamento. A página do painel
+também é estática e acessível por URL, mas os dados não são públicos: a proteção real
+está na autenticação e nas políticas RLS. Publicar apenas `dist/`, nunca a raiz.
 
 ## Testar no navegador
 
@@ -146,6 +188,9 @@ leitura pelo Daniel nem confirmação da data. A entrega real ainda não foi tes
 src/App.tsx                    Percurso principal e convite
 src/config.ts                  Perguntas, reações, memes, estrelas e histórico
 src/incident.css               Identidade luxury punk, responsividade e movimento
+src/admin/                     Painel autenticado do Capítulo I
+src/lib/telemetry.ts           Eventos mínimos e tolerância a falhas de rede
+supabase/migrations/           Tabela, funil e políticas RLS do Capítulo I
 src/styles.css                 Base e componentes preservados dos extras
 src/components/Admission.tsx   Cartão de sócio reutilizado
 src/components/MemeReaction.tsx Reações contextuais e dismiss

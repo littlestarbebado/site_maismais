@@ -218,6 +218,20 @@ try {
     await context.close();
     console.log(`Checked ${width}px: complete flow, keyboard, both refusals, accessibility.`);
   }
+  const adminContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await adminContext.route('**/*', (route) => {
+    if (new URL(route.request().url()).origin === new URL(url).origin) return route.continue();
+    external.push(route.request().url());
+    return route.abort();
+  });
+  const adminPage = await adminContext.newPage();
+  adminPage.on('pageerror', (e) => errors.push(e.message));
+  await adminPage.goto(new URL('/admin.html', url).toString());
+  await adminPage.getByRole('heading', { name: 'Acompanhamento do Capítulo I' }).waitFor();
+  assert(await adminPage.getByText('Painel ainda não configurado').isVisible());
+  assert.equal(await adminPage.getByRole('form').count(), 0);
+  assert.equal(await adminPage.getByRole('table').count(), 0);
+  await adminContext.close();
   await writeFile('artifacts/accessibility.json', JSON.stringify(results, null, 2));
   await writeFile(
     'artifacts/browser-summary.json',

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import { memes, questions } from '../config';
+import { telemetry } from '../lib/telemetry';
 
 function start() {
   render(<App />);
@@ -24,7 +25,9 @@ function accept() {
 
 describe('O Interrogatório', () => {
   it('tem quatro perguntas, foco a cada etapa e resultado sem criar dados persistentes', () => {
+    const track = vi.spyOn(telemetry, 'track');
     start();
+    expect(track).toHaveBeenCalledWith({ type: 'site_open', data: {} }, 'site-open');
     expect(questions).toHaveLength(4);
     for (let i = 0; i < 4; i++) {
       expect(screen.getByRole('heading', { name: questions[i].title })).toHaveFocus();
@@ -74,6 +77,7 @@ describe('O Interrogatório', () => {
   });
 
   it('mostra o convite real e permite pausar e saltar o caos', () => {
+    const track = vi.spyOn(telemetry, 'track');
     invite();
     expect(
       screen.getByText('POV: JÁ VISTE ISTO ANTES MAS EU DISSE QUE NÃO ESTAVA PRONTO'),
@@ -98,12 +102,15 @@ describe('O Interrogatório', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'SALTAR ANIMAÇÕES' }));
     expect(document.querySelector('.chaos-skipped')).toBeInTheDocument();
+    expect(track).toHaveBeenCalledWith({ type: 'animation_paused', data: {} });
+    expect(track).toHaveBeenCalledWith({ type: 'animation_skipped', data: {} });
     expect(screen.getByRole('button', { name: 'SIMMMMM 💋' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'NÃO POSSO 😭' })).toBeEnabled();
   });
 
   it('recusa no convite sem insistência e permite sugerir outro dia', async () => {
     const user = userEvent.setup();
+    const track = vi.spyOn(telemetry, 'track');
     const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
@@ -117,6 +124,21 @@ describe('O Interrogatório', () => {
     });
     await user.click(screen.getByRole('button', { name: 'COPIAR SUGESTÃO' }));
     expect(copy).toHaveBeenCalledWith('Outro dia que me dá jeito: 2026-12-02.');
+    expect(track).toHaveBeenCalledWith(
+      {
+        type: 'invite_response',
+        data: { response: 'no' },
+      },
+      expect.any(String),
+    );
+    expect(track).toHaveBeenCalledWith({
+      type: 'reschedule_action',
+      data: { action: 'date_selected' },
+    });
+    expect(track).toHaveBeenCalledWith({
+      type: 'reschedule_action',
+      data: { action: 'copy_clicked' },
+    });
     expect(screen.getByRole('status')).toHaveTextContent('Sugestão copiada.');
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -127,6 +149,34 @@ describe('O Interrogatório', () => {
     expect(screen.getByText('Agora manda mensagem ao Daniel, seu parvo.')).toBeInTheDocument();
     expect(screen.queryByText(/bilhete|reserva|namorar/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'PAUSAR O CAOS' })).toBeEnabled();
+  });
+
+  it('regista início, resposta, revelação e aceitação com dados mínimos', () => {
+    const track = vi.spyOn(telemetry, 'track');
+    start();
+    for (let question = 0; question < questions.length; question++) answer(question === 0 ? 2 : 0);
+
+    expect(track).toHaveBeenCalledWith(
+      { type: 'question_started', data: { question_index: 0 } },
+      expect.any(String),
+    );
+    expect(track).toHaveBeenCalledWith(
+      {
+        type: 'question_completed',
+        data: { question_index: 0, option_index: 2 },
+      },
+      expect.any(String),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /PRONTO, O QUE É QUE QUERES/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'SIMMMMM 💋' }));
+    expect(track).toHaveBeenCalledWith(
+      { type: 'css_reveal_entered', data: {} },
+      expect.any(String),
+    );
+    expect(track).toHaveBeenCalledWith(
+      { type: 'invite_response', data: { response: 'yes' } },
+      expect.any(String),
+    );
   });
 
   it('falha ao copiar uma data alternativa não apresenta falso sucesso', async () => {

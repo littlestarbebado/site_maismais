@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { club, memes, pointsPerQuestion, questions } from './config';
 import { MemeReactionProvider, useMemeReaction } from './components/MemeReaction';
+import { telemetry } from './lib/telemetry';
+import { telemetryEnabled } from './lib/supabase-config';
 
 type Stage = 'entry' | 'quiz' | 'results' | 'invite' | 'accepted' | 'declined';
+
+let flowSequence = 0;
 
 export default function App() {
   return (
@@ -13,6 +17,7 @@ export default function App() {
 }
 
 function Incident() {
+  const flowId = useRef(++flowSequence).current;
   const [stage, setStage] = useState<Stage>('entry');
   const [question, setQuestion] = useState(0);
   const [selection, setSelection] = useState<number | null>(null);
@@ -34,6 +39,16 @@ function Incident() {
     if (stage !== 'entry') heading.current?.focus({ preventScroll: true });
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [stage, question]);
+  useEffect(() => {
+    void telemetry.track({ type: 'site_open', data: {} }, 'site-open');
+  }, []);
+  useEffect(() => {
+    if (stage === 'quiz')
+      void telemetry.track(
+        { type: 'question_started', data: { question_index: question } },
+        `${flowId}-question-started-${question}`,
+      );
+  }, [flowId, question, stage]);
   useEffect(
     () => () => {
       void audio.current?.close();
@@ -65,9 +80,24 @@ function Incident() {
     dismiss();
     setChaosPaused(false);
     setChaosSkipped(false);
+    if (next === 'invite')
+      void telemetry.track({ type: 'css_reveal_entered', data: {} }, `${flowId}-css-reveal`);
     setStage(next);
   }
+  function toggleChaos() {
+    const paused = !chaosPaused;
+    setChaosPaused(paused);
+    void telemetry.track({ type: paused ? 'animation_paused' : 'animation_resumed', data: {} });
+  }
+  function skipChaos() {
+    if (!chaosSkipped) void telemetry.track({ type: 'animation_skipped', data: {} });
+    setChaosSkipped(true);
+  }
   async function copyAlternateDay() {
+    void telemetry.track({
+      type: 'reschedule_action',
+      data: { action: 'copy_clicked' },
+    });
     const message = `Outro dia que me dá jeito: ${alternateDay}.`;
     try {
       await navigator.clipboard.writeText(message);
@@ -79,6 +109,13 @@ function Incident() {
   function next() {
     if (selection === null) return;
     dismiss();
+    void telemetry.track(
+      {
+        type: 'question_completed',
+        data: { question_index: question, option_index: selection },
+      },
+      `${flowId}-question-completed-${question}`,
+    );
     if (question === 3) go(selection === 3 ? 'declined' : 'results');
     else {
       setQuestion(question + 1);
@@ -287,14 +324,10 @@ function Incident() {
               POV: JÁ VISTE ISTO ANTES MAS EU DISSE QUE NÃO ESTAVA PRONTO
             </p>
             <div className="chaos-controls" aria-label="Controlos das animações">
-              <button
-                type="button"
-                aria-pressed={chaosPaused}
-                onClick={() => setChaosPaused(!chaosPaused)}
-              >
+              <button type="button" aria-pressed={chaosPaused} onClick={toggleChaos}>
                 {chaosPaused ? 'RETOMAR O CAOS' : 'PAUSAR O CAOS'}
               </button>
-              <button type="button" onClick={() => setChaosSkipped(true)}>
+              <button type="button" onClick={skipChaos}>
                 SALTAR ANIMAÇÕES
               </button>
             </div>
@@ -317,10 +350,28 @@ function Incident() {
               💋 ⭐ 💥 🍿 🪩
             </p>
             <div className="invite-actions">
-              <button className="chaos-button" onClick={() => go('accepted')}>
+              <button
+                className="chaos-button"
+                onClick={() => {
+                  void telemetry.track(
+                    { type: 'invite_response', data: { response: 'yes' } },
+                    `${flowId}-invite-response`,
+                  );
+                  go('accepted');
+                }}
+              >
                 <span className="chaos-button-label">SIMMMMM 💋</span>
               </button>
-              <button className="chaos-button" onClick={() => go('declined')}>
+              <button
+                className="chaos-button"
+                onClick={() => {
+                  void telemetry.track(
+                    { type: 'invite_response', data: { response: 'no' } },
+                    `${flowId}-invite-response`,
+                  );
+                  go('declined');
+                }}
+              >
                 <span className="chaos-button-label">NÃO POSSO 😭</span>
               </button>
             </div>
@@ -330,14 +381,10 @@ function Incident() {
         {stage === 'accepted' && (
           <section className="accepted-screen">
             <div className="chaos-controls" aria-label="Controlos das animações">
-              <button
-                type="button"
-                aria-pressed={chaosPaused}
-                onClick={() => setChaosPaused(!chaosPaused)}
-              >
+              <button type="button" aria-pressed={chaosPaused} onClick={toggleChaos}>
                 {chaosPaused ? 'RETOMAR O CAOS' : 'PAUSAR O CAOS'}
               </button>
-              <button type="button" onClick={() => setChaosSkipped(true)}>
+              <button type="button" onClick={skipChaos}>
                 SALTAR ANIMAÇÕES
               </button>
             </div>
@@ -368,6 +415,11 @@ function Incident() {
                 onChange={(event) => {
                   setAlternateDay(event.target.value);
                   setCopyStatus('');
+                  if (event.target.value)
+                    void telemetry.track({
+                      type: 'reschedule_action',
+                      data: { action: 'date_selected' },
+                    });
                 }}
               />
               <button
@@ -399,6 +451,13 @@ function Incident() {
           </strong>
           <span>Primeiro jantar aprovado. O chef continua convencido de que merece mais.</span>
         </div>
+        {telemetryEnabled && (
+          <p className="telemetry-notice">
+            As escolhas são registadas para acompanhar este convite, através de um ID aleatório de
+            sessão. Os eventos não incluem IP nem localização; sem cookies publicitários nem
+            fingerprinting.
+          </p>
+        )}
         <details className="history">
           <summary>O CADASTRO DO CHEF ↗</summary>
           <ol>

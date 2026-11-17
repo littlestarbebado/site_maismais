@@ -340,6 +340,13 @@ html {
   color: #c4c6c8;
   max-width: 400px;
 }
+.telemetry-notice {
+  max-width: 850px;
+  margin-top: 8px;
+  color: #9da7b7;
+  font-size: 9px;
+  line-height: 1.6;
+}
 .history {
   margin-top: 12px;
   color: #c4c6c8;
