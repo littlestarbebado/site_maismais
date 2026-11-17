@@ -1,11 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import App, { confirmationMessage } from '../App';
+import App from '../App';
 import { memes, questions } from '../config';
-import { downloadDocument } from '../lib/download';
-
-vi.mock('../lib/download', () => ({ downloadDocument: vi.fn().mockResolvedValue(undefined) }));
 
 function start() {
   render(<App />);
@@ -22,7 +19,7 @@ function invite() {
 }
 function accept() {
   invite();
-  fireEvent.click(screen.getByRole('button', { name: /SIM, VÁ. MARCA LÁ ISSO/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'SIMMMMM 💋' }));
 }
 
 describe('O Interrogatório', () => {
@@ -76,65 +73,73 @@ describe('O Interrogatório', () => {
     expect(screen.getByRole('img', { name: memes.fallesi.alt })).toBeInTheDocument();
   });
 
-  it('recusa no convite termina sem insistência nem envio', () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
+  it('mostra o convite real e permite pausar e saltar o caos', () => {
     invite();
-    expect(screen.getByText('DATA A DEFINIR')).toBeInTheDocument();
-    expect(screen.getByText('LOCAL A COMBINAR')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'AGORA NÃO, OBRIGADO.' }));
-    expect(screen.getByRole('heading', { name: /TUDO BEM, BEN/ })).toHaveFocus();
-    expect(screen.queryByRole('button', { name: /SIM|COPIAR|COMEÇAR/ })).not.toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('POV: JÁ VISTE ISTO ANTES MAS EU DISSE QUE NÃO ESTAVA PRONTO'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'BENNNNNNN, QUERES IR A UM DATE COMIGO????' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('25/11 · PALÁCIO DO GELO · JANTAR + CINEMA ÀS 21:00'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('JANTAMOS ONDE NOS APETECER PQ SOMOS LIVRES')).toBeInTheDocument();
+    expect(
+      screen.getByText(/QUARTA-FEIRA, 25\/11\/2026 · PALÁCIO DO GELO, VISEU/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/RESTAURANTE À ESCOLHA LÁ DENTRO/)).toBeInTheDocument();
+    expect(screen.queryByText(/namorar comigo/i)).not.toBeInTheDocument();
+    const pause = screen.getByRole('button', { name: 'PAUSAR O CAOS' });
+    fireEvent.click(pause);
+    expect(screen.getByRole('button', { name: 'RETOMAR O CAOS' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'SALTAR ANIMAÇÕES' }));
+    expect(document.querySelector('.chaos-skipped')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'SIMMMMM 💋' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'NÃO POSSO 😭' })).toBeEnabled();
   });
 
-  it('aceitação local, PNG, mensagem copiada e cartão preservado', async () => {
+  it('recusa no convite sem insistência e permite sugerir outro dia', async () => {
     const user = userEvent.setup();
     const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    accept();
-    expect(screen.getByRole('article', { name: 'Bilhete de jantar' })).toHaveTextContent(
-      'A definir',
-    );
-    expect(screen.getByText(/Nada foi enviado automaticamente/)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Guardar bilhete/ }));
-    expect(downloadDocument).toHaveBeenCalledWith(
-      'JANTAR N.º 002',
-      expect.arrayContaining([{ label: 'Estado', value: 'Convite aceite' }]),
-      'DB-jantar-002-Ben.png',
-      expect.stringContaining('confirmação não enviada'),
-    );
-    await user.click(screen.getByRole('button', { name: /COPIAR MENSAGEM/ }));
-    expect(copy).toHaveBeenCalledWith(confirmationMessage);
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Mensagem copiada. Agora envia-a ao Daniel.',
-    );
+    invite();
+    fireEvent.click(screen.getByRole('button', { name: 'NÃO POSSO 😭' }));
+    expect(screen.getByRole('heading', { name: /TUDO BEM, BEN/ })).toHaveFocus();
+    expect(screen.getByText(/Não há pressão nenhuma/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'SIMMMMM 💋' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Se quiseres, podes sugerir outro dia:'), {
+      target: { value: '2026-12-02' },
+    });
+    await user.click(screen.getByRole('button', { name: 'COPIAR SUGESTÃO' }));
+    expect(copy).toHaveBeenCalledWith('Outro dia que me dá jeito: 2026-12-02.');
+    expect(screen.getByRole('status')).toHaveTextContent('Sugestão copiada.');
     expect(fetchMock).not.toHaveBeenCalled();
-    await user.click(screen.getByText(/EXTRAS ABSOLUTAMENTE/));
-    await user.click(screen.getByRole('button', { name: 'Ver verso do cartão de sócio' }));
-    expect(screen.getByRole('button', { name: 'Ver frente do cartão de sócio' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
   });
 
-  it('falha de clipboard apresenta mensagem selecionável sem falso sucesso', async () => {
+  it('aceita como segundo date sem confirmar reserva, bilhete ou envio', () => {
+    accept();
+    expect(screen.getByRole('heading', { name: 'FODA-SE CONSEGUI UM SEGUNDO DATE' })).toHaveFocus();
+    expect(screen.getByText('Agora manda mensagem ao Daniel, seu parvo.')).toBeInTheDocument();
+    expect(screen.queryByText(/bilhete|reserva|namorar/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'PAUSAR O CAOS' })).toBeEnabled();
+  });
+
+  it('falha ao copiar uma data alternativa não apresenta falso sucesso', async () => {
     const user = userEvent.setup();
     vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('Permission denied'));
-    accept();
-    await user.click(screen.getByRole('button', { name: /COPIAR MENSAGEM/ }));
+    invite();
+    await user.click(screen.getByRole('button', { name: 'NÃO POSSO 😭' }));
+    fireEvent.change(screen.getByLabelText('Se quiseres, podes sugerir outro dia:'), {
+      target: { value: '2026-12-02' },
+    });
+    await user.click(screen.getByRole('button', { name: 'COPIAR SUGESTÃO' }));
     expect(screen.getByRole('status')).toHaveTextContent('Não foi possível copiar');
-    expect(screen.getByText(confirmationMessage)).toBeInTheDocument();
-  });
-
-  it('falha do PNG mostra erro e permite repetir', async () => {
-    vi.mocked(downloadDocument).mockRejectedValueOnce(new Error('Canvas unavailable'));
-    const user = userEvent.setup();
-    accept();
-    await user.click(screen.getByRole('button', { name: /Guardar bilhete/ }));
-    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível guardar');
-    expect(screen.getByRole('button', { name: /Guardar bilhete/ })).toBeEnabled();
+    expect(screen.getByText('Outro dia que me dá jeito: 2026-12-02.')).toBeInTheDocument();
   });
 
   it('som começa desligado; indisponibilidade não interrompe o quiz', async () => {

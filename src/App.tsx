@@ -1,15 +1,8 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { MemberCard } from './components/Admission';
-import { Reservation } from './components/Reservation';
-import { Feedback } from './components/Feedback';
-import { DownloadButton } from './components/UI';
-import { club, pointsPerQuestion, questions } from './config';
+import { useEffect, useRef, useState } from 'react';
+import { club, memes, pointsPerQuestion, questions } from './config';
 import { MemeReactionProvider, useMemeReaction } from './components/MemeReaction';
-import { downloadDocument } from './lib/download';
 
 type Stage = 'entry' | 'quiz' | 'results' | 'invite' | 'accepted' | 'declined';
-export const confirmationMessage =
-  'Daniel, aceito o convite para o jantar n.º 002. Agora temos de combinar a data e o local!';
 
 export default function App() {
   return (
@@ -26,6 +19,9 @@ function Incident() {
   const [sound, setSound] = useState(false);
   const [soundError, setSoundError] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
+  const [alternateDay, setAlternateDay] = useState('');
+  const [chaosPaused, setChaosPaused] = useState(false);
+  const [chaosSkipped, setChaosSkipped] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const audio = useRef<AudioContext | null>(null);
   const { show, dismiss } = useMemeReaction();
@@ -67,7 +63,18 @@ function Incident() {
   }
   function go(next: Stage) {
     dismiss();
+    setChaosPaused(false);
+    setChaosSkipped(false);
     setStage(next);
+  }
+  async function copyAlternateDay() {
+    const message = `Outro dia que me dá jeito: ${alternateDay}.`;
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopyStatus('Sugestão copiada. Envia-a ao Daniel quando quiseres.');
+    } catch {
+      setCopyStatus('Não foi possível copiar. Podes selecionar e copiar a sugestão abaixo.');
+    }
   }
   function next() {
     if (selection === null) return;
@@ -80,7 +87,9 @@ function Incident() {
   }
 
   return (
-    <div className={`incident stage-${stage}`}>
+    <div
+      className={`incident stage-${stage} ${stage === 'invite' || stage === 'accepted' ? 'chaos-stage' : ''} ${chaosPaused ? 'chaos-paused' : ''} ${chaosSkipped ? 'chaos-skipped' : ''}`}
+    >
       <a className="skip-link" href="#conteudo">
         Saltar para o conteúdo
       </a>
@@ -274,34 +283,45 @@ function Incident() {
 
         {stage === 'invite' && (
           <section className="invite-screen">
-            <div className="star-burst" aria-hidden="true">
-              {Array.from({ length: 12 }, (_, i) => (
-                <span key={i} style={{ '--i': i } as CSSProperties}>
-                  ✦
-                </span>
-              ))}
-            </div>
-            <p className="mono">FIM DO INTERROGATÓRIO. ERA ISTO.</p>
-            <p className="invite-prelude">Pronto, Ben.</p>
-            <h1 ref={heading} tabIndex={-1} className="display-title">
-              QUERES VIR <br />
-              <em>JANTAR COMIGO</em> <br />
-              OUTRA VEZ?
-            </h1>
-            <p className="invite-description">
-              Prometo tentar manter a estrela. <br />A minha reputação está em jogo.
+            <p className="spoiler-leak">
+              POV: JÁ VISTE ISTO ANTES MAS EU DISSE QUE NÃO ESTAVA PRONTO
             </p>
-            <div className="invite-details mono">
-              <span>DATA A DEFINIR</span>
-              <span>LOCAL A COMBINAR</span>
-              <span>JANTAR N.º 002</span>
-            </div>
-            <div className="invite-actions">
-              <button className="punk-button primary" onClick={() => go('accepted')}>
-                SIM, VÁ. MARCA LÁ ISSO. <span aria-hidden="true">↗</span>
+            <div className="chaos-controls" aria-label="Controlos das animações">
+              <button
+                type="button"
+                aria-pressed={chaosPaused}
+                onClick={() => setChaosPaused(!chaosPaused)}
+              >
+                {chaosPaused ? 'RETOMAR O CAOS' : 'PAUSAR O CAOS'}
               </button>
-              <button className="punk-button secondary" onClick={() => go('declined')}>
-                AGORA NÃO, OBRIGADO.
+              <button type="button" onClick={() => setChaosSkipped(true)}>
+                SALTAR ANIMAÇÕES
+              </button>
+            </div>
+            <h1 ref={heading} tabIndex={-1} className="chaos-title">
+              BENNNNNNN, QUERES IR A UM DATE COMIGO????
+            </h1>
+            <p className="chaos-date">25/11 · PALÁCIO DO GELO · JANTAR + CINEMA ÀS 21:00</p>
+            <p className="chaos-restaurant">JANTAMOS ONDE NOS APETECER PQ SOMOS LIVRES</p>
+            <p className="chaos-facts">
+              QUARTA-FEIRA, 25/11/2026 · PALÁCIO DO GELO, VISEU
+              <br />
+              JANTAR ANTES DO CINEMA · RESTAURANTE À ESCOLHA LÁ DENTRO
+            </p>
+            <div className="chaos-pics" aria-hidden="true">
+              <img src={memes.coracao.src} alt="" />
+              <img src={memes.sanidade.src} alt="" />
+              <img src={memes.fallesi.src} alt="" />
+            </div>
+            <p className="chaos-emoji" aria-hidden="true">
+              💋 ⭐ 💥 🍿 🪩
+            </p>
+            <div className="invite-actions">
+              <button className="chaos-button" onClick={() => go('accepted')}>
+                <span className="chaos-button-label">SIMMMMM 💋</span>
+              </button>
+              <button className="chaos-button" onClick={() => go('declined')}>
+                <span className="chaos-button-label">NÃO POSSO 😭</span>
               </button>
             </div>
           </section>
@@ -309,102 +329,25 @@ function Incident() {
 
         {stage === 'accepted' && (
           <section className="accepted-screen">
-            <p className="mono">JANTAR N.º 002 / CONVITE ACEITE</p>
-            <h1 ref={heading} tabIndex={-1} className="display-title">
-              PRONTO. <br />
-              <em>AGORA TEMOS DE</em> <br />
-              COMBINAR ISSO.
-            </h1>
-            <div className="confirmation-grid">
-              <article className="dinner-ticket" aria-label="Bilhete de jantar">
-                <div className="ticket-head">
-                  <span>D&B.</span>
-                  <span className="mono">
-                    GUARDA ISTO. <br />
-                    OU FAZ UM PRINT.
-                  </span>
-                </div>
-                <h2>
-                  JANTAR <em>n.º 002</em>
-                </h2>
-                <dl>
-                  {[
-                    ['Convidado', 'Ben'],
-                    ['Anfitrião', 'Daniel'],
-                    ['Experiência', 'Jantar n.º 002'],
-                    ['Data', 'A definir'],
-                    ['Estado', 'Convite aceite'],
-                  ].map(([label, value]) => (
-                    <div key={label}>
-                      <dt>{label}</dt>
-                      <dd>{value}</dd>
-                    </div>
-                  ))}
-                </dl>
-                <div className="ticket-foot">
-                  <span className="barcode" aria-hidden="true" />
-                  <span className="mono">
-                    VÁLIDO PARA UMA <br />
-                    PESSOA ESPECÍFICA.
-                  </span>
-                </div>
-              </article>
-              <div className="ticket-actions">
-                <p>
-                  O bilhete é teu. <br />
-                  <em>Agora falta avisar o chef.</em>
-                </p>
-                <DownloadButton
-                  onDownload={() =>
-                    downloadDocument(
-                      'JANTAR N.º 002',
-                      [
-                        { label: 'Convidado', value: 'Ben' },
-                        { label: 'Anfitrião', value: 'Daniel' },
-                        { label: 'Experiência', value: 'Jantar n.º 002' },
-                        { label: 'Data', value: 'A definir' },
-                        { label: 'Estado', value: 'Convite aceite' },
-                      ],
-                      'DB-jantar-002-Ben.png',
-                      'Local a combinar. Convite aceite neste dispositivo; confirmação não enviada ao Daniel.',
-                    )
-                  }
-                >
-                  Guardar bilhete · PNG
-                </DownloadButton>
-                <button
-                  className="punk-button primary"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(confirmationMessage);
-                      setCopyStatus('Mensagem copiada. Agora envia-a ao Daniel.');
-                    } catch {
-                      setCopyStatus(
-                        'Não foi possível copiar. Seleciona a mensagem abaixo e envia-a ao Daniel.',
-                      );
-                    }
-                  }}
-                >
-                  COPIAR MENSAGEM PARA O DANIEL <span aria-hidden="true">↗</span>
-                </button>
-                <p className="delivery-note">
-                  Nada foi enviado automaticamente. Copia esta mensagem e envia-a ao Daniel:
-                </p>
-                <p className="copy-message">{confirmationMessage}</p>
-                <p role="status">{copyStatus}</p>
-              </div>
+            <div className="chaos-controls" aria-label="Controlos das animações">
+              <button
+                type="button"
+                aria-pressed={chaosPaused}
+                onClick={() => setChaosPaused(!chaosPaused)}
+              >
+                {chaosPaused ? 'RETOMAR O CAOS' : 'PAUSAR O CAOS'}
+              </button>
+              <button type="button" onClick={() => setChaosSkipped(true)}>
+                SALTAR ANIMAÇÕES
+              </button>
             </div>
-            <details className="club-extras">
-              <summary>
-                EXTRAS ABSOLUTAMENTE DESNECESSÁRIOS <span aria-hidden="true">+</span>
-              </summary>
-              <div className="extras-content">
-                <h2>Já que fiz o site.</h2>
-                <MemberCard />
-                <Reservation />
-                <Feedback />
-              </div>
-            </details>
+            <h1 ref={heading} tabIndex={-1} className="accepted-title">
+              FODA-SE CONSEGUI UM SEGUNDO DATE
+            </h1>
+            <p className="accepted-message">Agora manda mensagem ao Daniel, seu parvo.</p>
+            <p className="chaos-emoji" aria-hidden="true">
+              💥 💋 ⭐ 🎉 🍾
+            </p>
           </section>
         )}
 
@@ -415,11 +358,30 @@ function Incident() {
               TUDO <br />
               <em>BEM, BEN.</em>
             </h1>
-            <p>
-              O convite fica sem efeito. <br />
-              Obrigado por teres passado por aqui.
-            </p>
-            <p className="mono">Podes fechar esta página.</p>
+            <p>Tudo bem — obrigado por dizeres. Não há pressão nenhuma.</p>
+            <label htmlFor="alternate-day">Se quiseres, podes sugerir outro dia:</label>
+            <div className="alternate-day">
+              <input
+                id="alternate-day"
+                type="date"
+                value={alternateDay}
+                onChange={(event) => {
+                  setAlternateDay(event.target.value);
+                  setCopyStatus('');
+                }}
+              />
+              <button
+                className="punk-button primary"
+                disabled={!alternateDay}
+                onClick={() => void copyAlternateDay()}
+              >
+                COPIAR SUGESTÃO
+              </button>
+            </div>
+            {alternateDay && (
+              <p className="copy-message">Outro dia que me dá jeito: {alternateDay}.</p>
+            )}
+            <p role="status">{copyStatus}</p>
           </section>
         )}
       </main>

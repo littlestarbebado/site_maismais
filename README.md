@@ -1,6 +1,6 @@
 # D&B. 2.0 — The Ben Incident
 
-Quatro perguntas. Zero necessidade. Um convite do Daniel para o Ben.
+Quatro perguntas. Zero necessidade. Um convite do Daniel para um segundo date com o Ben.
 Redesign do projeto existente em React, TypeScript e Vite, em português de Portugal.
 
 ## Executar
@@ -21,7 +21,7 @@ Não executa publicação. O servidor local apresenta o endereço na consola.
 
 ## Experiência
 
-Entrada → quatro perguntas → resultados fictícios → convite para jantar.
+Entrada → quatro perguntas → resultados fictícios → convite para jantar e cinema em Viseu.
 Leitura e interação pensadas para 60–120 segundos; sem espera forçada nem
 temporizador. O ritmo real depende de quem joga e ainda requer validação humana.
 
@@ -31,14 +31,15 @@ temporizador. O ritmo real depende de quem joga e ainda requer validação human
 - «Não, obrigado» na quarta pergunta termina imediatamente após «Terminar», sem
   apresentar resultados ou insistir no convite. A recusa no convite também termina.
 - Os três memes originais estão em `public/memes/`. Surgem em escolhas específicas
-  das perguntas 1 e 3; não aparecem nas perguntas 2 e 4. Fecham por botão, Escape,
-  mudança de ecrã ou após 5,5 segundos. Não bloqueiam os controlos por baixo.
-- Som sintetizado no dispositivo, desligado por defeito. Movimento reduzido respeitado.
-- Aceitação gera um bilhete local com data a definir, exportável em PNG. **Nada é
-  enviado automaticamente ao Daniel.** A mensagem pode ser copiada; se a cópia for
-  bloqueada, continua visível para seleção manual.
-- Cartão reversível, PNG do cartão, reservas, reclamações e avaliações preservados
-  nos extras opcionais depois da aceitação. Não prolongam o percurso obrigatório.
+  das perguntas 1 e 3 e no convite. Fecham por botão, Escape, mudança de ecrã ou após
+  5,5 segundos. Não bloqueiam os controlos por baixo.
+- Som sintetizado no dispositivo, desligado por defeito. Movimento reduzido respeitado;
+  o caos pode ser pausado ou saltado.
+- O convite é para quarta-feira, 25/11/2026, no Palácio do Gelo, Viseu: jantar à
+  escolha antes do cinema às 21:00. O aceite é local, sem reserva nem bilhete comprado.
+  A recusa é respeitada e permite copiar uma sugestão para outro dia.
+- Os componentes de reserva, reclamação e avaliação continuam independentes e
+  testados, mas não são apresentados no percurso público atual.
 - Fontes Anton, Manrope e Cormorant Garamond distribuídas localmente por
   `@fontsource`, com licenças OFL nos respetivos pacotes. Sem fontes ou imagens externas.
 
@@ -73,13 +74,12 @@ npm.cmd run test:browser
 
 O primeiro teste inicia automaticamente um **preview do build de produção** na
 porta 5175. Verifica larguras 320, 390, 768 e 1440, as 16 respostas, teclado, foco,
-recusa no quiz e no convite, clipboard, memes originais, PNG do bilhete e cartão,
-movimento reduzido e acessibilidade com axe. Não contacta serviços externos.
+aceitação e recusa, sugestão de outro dia, pausa/salto das animações, movimento
+reduzido e acessibilidade com axe. Não contacta serviços externos.
 `TEST_URL` permite usar outro servidor já iniciado; nesse caso o script não o gere.
 
-O segundo teste inicia Vite isoladamente na porta 5174, com configuração de teste
-Formspree. Interceta todos os envios: verifica erro/repetição de reserva, PNG,
-reclamação e avaliações de 1/5 sem enviar mensagens reais.
+O segundo teste confirma que aceitar o date não apresenta reservas, bilhetes ou
+formulários, nem inicia pedidos externos.
 Ambos encerram os servidores que iniciam.
 
 Noutros sistemas, usar um Chromium instalado para Playwright e omitir
@@ -110,8 +110,9 @@ necessário um rewrite SPA. Não adicionar rotas ocultas para conteúdo futuro.
 
 ### Formulários opcionais
 
-Para manter os extras sem serviço, os envios apresentam erro honesto. O convite e
-o bilhete principal continuam totalmente funcionais com a cópia da mensagem.
+Os formulários não fazem parte do percurso público atual e não requerem variáveis
+de ambiente. Se forem reintroduzidos, os envios sem serviço configurado devem
+continuar a apresentar erro explícito.
 
 **Netlify:** ativar deteção Forms e confirmar `reserva`, `livro`, `inquerito` no
 painel após build. As declarações HTML estão em `index.html`. Configurar notificações
@@ -152,6 +153,6 @@ src/lib/download.ts            Exportação PNG por Canvas
 src/lib/forms.ts               Transporte e validação de formulários opcionais
 src/test/                      Testes unitários e de integração
 scripts/browser-check.mjs      Percurso, capturas, PNGs e acessibilidade
-scripts/booking-check.mjs      Formulários com rede intercetada
+scripts/booking-check.mjs      Confirma que o aceite não expõe reservas ou bilhetes
 scripts/check-public-build.mjs Verificação de isolamento do build
 ```

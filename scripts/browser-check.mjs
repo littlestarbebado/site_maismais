@@ -1,6 +1,6 @@
 import { chromium } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import assert from 'node:assert/strict';
 
@@ -97,27 +97,25 @@ async function finishQuiz(page, refusal = false) {
   }
 }
 
+async function waitForPreview() {
+  const deadline = Date.now() + 20000;
+  let lastError = 'no response';
+  while (Date.now() < deadline) {
+    if (server.exitCode !== null) throw new Error(`Preview exited: ${server.exitCode}`);
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(1000) });
+      if (response.ok) return;
+      lastError = `HTTP ${response.status}`;
+    } catch (error) {
+      lastError = error.message;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(`Preview startup timeout: ${lastError}`);
+}
+
 try {
-  if (server)
-    await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Preview startup timeout')), 20000);
-      server.stdout.on('data', (chunk) => {
-        if (chunk.toString().includes('Local:')) {
-          clearTimeout(timer);
-          resolve();
-        }
-      });
-      server.on('error', (error) => {
-        clearTimeout(timer);
-        reject(error);
-      });
-      server.on('exit', (code) => {
-        if (code) {
-          clearTimeout(timer);
-          reject(new Error(`Preview exited: ${code}`));
-        }
-      });
-    });
+  if (server) await waitForPreview();
   await mkdir('artifacts', { recursive: true });
   browser = await chromium.launch(
     process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {},
@@ -180,38 +178,43 @@ try {
     await audit(page, 'resultado', width);
     await page.getByRole('button', { name: /PRONTO, O QUE É QUE QUERES/ }).click();
     await audit(page, 'convite', width);
-    await page.getByRole('button', { name: /SIM, VÁ. MARCA LÁ ISSO/ }).click();
-    await audit(page, 'bilhete', width);
-    if (width === 390) {
-      const downloadEvent = page.waitForEvent('download');
-      await page.getByRole('button', { name: /Guardar bilhete/ }).click();
-      await (await downloadEvent).saveAs('artifacts/bilhete.png');
-      const bytes = await readFile('artifacts/bilhete.png');
-      assert.equal(bytes.subarray(1, 4).toString(), 'PNG');
-      assert.equal(bytes.readUInt32BE(16), 1400);
-      // Clipboard is an honest local action, independently verified through a browser permission.
-      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-      await page.getByRole('button', { name: /COPIAR MENSAGEM/ }).click();
-      assert.match(await page.evaluate(() => navigator.clipboard.readText()), /jantar n.º 002/);
-      await page.getByText(/EXTRAS ABSOLUTAMENTE/).click();
-      await page.getByRole('button', { name: 'Ver verso do cartão de sócio' }).click();
-      const cardDownload = page.waitForEvent('download');
-      await page.getByRole('button', { name: /Guardar cartão/ }).click();
-      await (await cardDownload).saveAs('artifacts/cartao.png');
-      assert.equal((await readFile('artifacts/cartao.png')).subarray(1, 4).toString(), 'PNG');
-      await audit(page, 'extras', width);
+    if (width === 1440) {
+      await page.getByRole('button', { name: 'PAUSAR O CAOS' }).click();
+      assert.equal(
+        await page
+          .locator('.chaos-stage')
+          .evaluate((node) => getComputedStyle(node).animationPlayState),
+        'paused',
+      );
+      await page.getByRole('button', { name: 'RETOMAR O CAOS' }).click();
+      await page.getByRole('button', { name: 'SALTAR ANIMAÇÕES' }).click();
+      assert.equal(
+        await page.locator('.chaos-stage').evaluate((node) => getComputedStyle(node).animationName),
+        'none',
+      );
     }
+    await page.getByRole('button', { name: 'SIMMMMM 💋' }).click();
+    await page.getByRole('heading', { name: 'FODA-SE CONSEGUI UM SEGUNDO DATE' }).waitFor();
+    assert(await page.getByText('Agora manda mensagem ao Daniel, seu parvo.').isVisible());
+    await audit(page, 'segundo-date-aceite', width);
     assert.equal(await page.evaluate(() => localStorage.length), 0);
     await page.reload();
     await finishQuiz(page, true);
     await page.getByRole('heading', { name: /TUDO BEM, BEN/ }).waitFor();
     await audit(page, 'recusa', width);
-    assert.equal(await page.getByRole('button', { name: /MARCA LÁ/ }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'SIMMMMM 💋' }).count(), 0);
+    if (width === 390) {
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+      await page.getByLabel('Se quiseres, podes sugerir outro dia:').fill('2026-12-02');
+      await page.getByRole('button', { name: 'COPIAR SUGESTÃO' }).click();
+      assert.match(await page.evaluate(() => navigator.clipboard.readText()), /2026-12-02/);
+    }
     await page.reload();
     await finishQuiz(page);
     await page.getByRole('button', { name: /PRONTO, O QUE É QUE QUERES/ }).click();
-    await page.getByRole('button', { name: 'AGORA NÃO, OBRIGADO.' }).click();
+    await page.getByRole('button', { name: 'NÃO POSSO 😭' }).click();
     await page.getByRole('heading', { name: /TUDO BEM, BEN/ }).waitFor();
+    await audit(page, 'recusa-do-convite', width);
     await context.close();
     console.log(`Checked ${width}px: complete flow, keyboard, both refusals, accessibility.`);
   }
@@ -245,7 +248,7 @@ try {
     'Accessibility violations',
   );
   console.log(
-    `PASS: ${results.length} accessibility audits; 16 answers; 4 widths; PNG ticket and card; zero external requests.`,
+    `PASS: ${results.length} accessibility audits; 16 answers; both date responses; 4 widths; zero external requests.`,
   );
 } finally {
   await browser?.close();
