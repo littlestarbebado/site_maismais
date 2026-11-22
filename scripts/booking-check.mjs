@@ -53,8 +53,6 @@ try {
   });
   await context.route('**/*', (route) => {
     if (new URL(route.request().url()).origin === new URL(url).origin) return route.continue();
-    if (/\.(?:spotify\.com|scdn\.co|spotifycdn\.com)$/.test(new URL(route.request().url()).hostname))
-      return route.continue();
     if (/\.sentry\.io$/.test(new URL(route.request().url()).hostname)) return route.abort();
     external.push(route.request().url());
     return route.abort();

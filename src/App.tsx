@@ -175,7 +175,7 @@ function Incident() {
           <h1>A preparar<br /><em>o inevitável.</em></h1>
           <div className="intro-log">
             <span>A VERIFICAR IDENTIDADE... <b>BEN10 DETETADO. INFELIZMENTE.</b></span>
-            <span>A ANALISAR COMPATIBILIDADE... <b>ARIANA GRANDE: APROVADO. · LADYBUG: APROVADO. · SANIDADE: NÃO ENCONTRADA.</b></span>
+            <span>A ANALISAR COMPATIBILIDADE... <b>LADYBUG: APROVADO. · SANIDADE: NÃO ENCONTRADA.</b></span>
             <span>A CARREGAR O ROMANCE... <b>ERRO 404: DANIEL NÃO SABE COMUNICAR NORMALMENTE.</b></span>
             <span>99% <b>À ESPERA QUE O DANIEL GANHE CORAGEM...</b></span>
           </div>
@@ -373,10 +373,6 @@ function Incident() {
             <p className="results-question">Como é que o Daniel ganhou sem jogar?</p>
             <p>Não sabemos. O sistema foi desenvolvido por ele.</p>
             <aside className="spoiler-moment">POV: JÁ VISTE ISTO ANTES MAS EU DISSE QUE NÃO ESTAVA PRONTO.</aside>
-            <div className="moonlight-module">
-              <div><span className="mono">FAIXA DE APOIO EMOCIONAL</span><strong>Moonlight <i>— Ariana Grande</i></strong><a href="https://open.spotify.com/track/50Mc9BDUDzTxFwaPygZw6H" target="_blank" rel="noreferrer">Abrir a faixa no Spotify ↗</a></div>
-              <iframe title="Moonlight, de Ariana Grande, no Spotify" src="https://open.spotify.com/embed/track/50Mc9BDUDzTxFwaPygZw6H?utm_source=generator" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" />
-            </div>
             <button className="punk-button light" onClick={() => go('invite')}>
               PRONTO, O QUE É QUE QUERES? <span aria-hidden="true">↗</span>
             </button>
