@@ -53,13 +53,18 @@ try {
   });
   await context.route('**/*', (route) => {
     if (new URL(route.request().url()).origin === new URL(url).origin) return route.continue();
+    if (/\.(?:spotify\.com|scdn\.co|spotifycdn\.com)$/.test(new URL(route.request().url()).hostname))
+      return route.continue();
+    if (/\.sentry\.io$/.test(new URL(route.request().url()).hostname)) return route.abort();
     external.push(route.request().url());
     return route.abort();
   });
   const page = await context.newPage();
   await page.goto(url);
+  if (await page.getByRole('button', { name: /SALTAR INTRO/ }).count())
+    await page.getByRole('button', { name: /SALTAR INTRO/ }).click();
   await page.getByRole('button', { name: /COMEÇAR ESTA PALHAÇADA/ }).click();
-  for (let question = 0; question < 4; question++) {
+  for (let question = 0; question < 5; question++) {
     await page.getByRole('radio').nth(1).check();
     await page.getByRole('button', { name: /SEGUINTE|VER O VEREDITO/ }).click();
   }
@@ -85,7 +90,7 @@ try {
   );
   assert.deepEqual(external, []);
   console.log(
-    'PASS: second-date acceptance shows no reservation/ticket flow or external requests.',
+    'PASS: second-date acceptance shows no reservation/ticket flow or unexpected external requests.',
   );
 } finally {
   await browser?.close();

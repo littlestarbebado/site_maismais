@@ -94,19 +94,35 @@ export const questions = [
     memes: [null, null, 'sanidade', 'fallesi'],
   },
   {
-    title: 'Queres outro jantar?',
-    options: ['Sim.', 'Sim, mas cala-te.', 'Depende do menu.', 'Não, obrigado.'],
+    title: 'Qual é o teu nível de equilíbrio numa pista?',
+    options: ['Profissional.', 'Tenho potencial.', 'Não comentes.', 'Isto vai correr lindamente.'],
     reactions: [
       'Pronto, era só isso.',
       'Não prometo nada.',
       'Olha o crítico Michelin.',
-      'Tudo bem. O convite fica sem efeito.',
+      'Nota: nenhum equipamento de segurança incluído.',
+    ],
+    memes: [null, null, null, null],
+  },
+  {
+    title: 'Durante a sessão, o Daniel falou mais do que devia?',
+    options: [
+      'Não, foi um espectador exemplar.',
+      'Sim. O filme tinha diálogos, mas ele tinha comentários.',
+      'Vim ver um filme e acabei num podcast.',
+      'Não me lembro do filme, só me lembro do Daniel a falar. 💀',
+    ],
+    reactions: [
+      'Uma raridade documentada em direto.',
+      'Comentário do realizador, versão Daniel.',
+      'Episódio novo todas as semanas.',
+      'O filme era só a banda sonora do podcast.',
     ],
     memes: [null, null, null, null],
   },
 ] satisfies { title: string; options: string[]; reactions: string[]; memes: (MemeId | null)[] }[];
 // Pontos fictícios: todas as opções têm o mesmo valor.
-export const pointsPerQuestion = [420, 690, 900, 330];
+export const pointsPerQuestion = [420, 690, 900, 330, 500];
 
 export type MemeId = 'coracao' | 'sanidade' | 'fallesi';
 export const memes: Record<MemeId, { src: string; alt: string; caption: string }> = {

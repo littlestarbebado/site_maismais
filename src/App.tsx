@@ -24,9 +24,17 @@ function Incident() {
   const [sound, setSound] = useState(false);
   const [soundError, setSoundError] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
+  const [shareStatus, setShareStatus] = useState('');
   const [alternateDay, setAlternateDay] = useState('');
   const [chaosPaused, setChaosPaused] = useState(false);
   const [chaosSkipped, setChaosSkipped] = useState(false);
+  const [showIntro, setShowIntro] = useState(() => {
+    try {
+      return !sessionStorage.getItem('db-intro-seen');
+    } catch {
+      return true;
+    }
+  });
   const heading = useRef<HTMLHeadingElement>(null);
   const audio = useRef<AudioContext | null>(null);
   const { show, dismiss } = useMemeReaction();
@@ -42,6 +50,20 @@ function Incident() {
   useEffect(() => {
     void telemetry.track({ type: 'site_open', data: {} }, 'site-open');
   }, []);
+  useEffect(() => {
+    if (!showIntro) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timer = window.setTimeout(() => dismissIntro(), reduced ? 700 : 6800);
+    return () => window.clearTimeout(timer);
+  }, [showIntro]);
+  function dismissIntro() {
+    setShowIntro(false);
+    try {
+      sessionStorage.setItem('db-intro-seen', '1');
+    } catch {
+      // Intro still works when browser storage is unavailable.
+    }
+  }
   useEffect(() => {
     if (stage === 'quiz')
       void telemetry.track(
@@ -106,6 +128,24 @@ function Incident() {
       setCopyStatus('Não foi possível copiar. Podes selecionar e copiar a sugestão abaixo.');
     }
   }
+  async function shareCelebration() {
+    const message = 'Foda-se consegui um segundo date. Quando é que vamos patinar e comer em Viseu?';
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: message });
+        setShareStatus('Mensagem aberta para partilhares.');
+      } catch {
+        setShareStatus('Partilha cancelada. Continua tudo bem.');
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(message);
+      setShareStatus('Mensagem copiada. Agora envia-a ao Daniel quando quiseres.');
+    } catch {
+      setShareStatus(message);
+    }
+  }
   function next() {
     if (selection === null) return;
     dismiss();
@@ -116,7 +156,7 @@ function Incident() {
       },
       `${flowId}-question-completed-${question}`,
     );
-    if (question === 3) go(selection === 3 ? 'declined' : 'results');
+    if (question === questions.length - 1) go('results');
     else {
       setQuestion(question + 1);
       setSelection(null);
@@ -127,6 +167,22 @@ function Incident() {
     <div
       className={`incident stage-${stage} ${stage === 'invite' || stage === 'accepted' ? 'chaos-stage' : ''} ${chaosPaused ? 'chaos-paused' : ''} ${chaosSkipped ? 'chaos-skipped' : ''}`}
     >
+      {showIntro && (
+        <section className="loading-incident" aria-label="Introdução" aria-live="polite">
+          <button className="intro-skip" onClick={dismissIntro}>SALTAR INTRO ↗</button>
+          <div className="intro-orbit" aria-hidden="true"><i>♥</i></div>
+          <p className="intro-kicker">D&amp;B. / INCIDENTE 001</p>
+          <h1>A preparar<br /><em>o inevitável.</em></h1>
+          <div className="intro-log">
+            <span>A VERIFICAR IDENTIDADE... <b>BEN10 DETETADO. INFELIZMENTE.</b></span>
+            <span>A ANALISAR COMPATIBILIDADE... <b>ARIANA GRANDE: APROVADO. · LADYBUG: APROVADO. · SANIDADE: NÃO ENCONTRADA.</b></span>
+            <span>A CARREGAR O ROMANCE... <b>ERRO 404: DANIEL NÃO SABE COMUNICAR NORMALMENTE.</b></span>
+            <span>99% <b>À ESPERA QUE O DANIEL GANHE CORAGEM...</b></span>
+          </div>
+          <div className="intro-progress"><span /></div>
+          <p className="intro-access">ACESSO CONCEDIDO. &nbsp; WELCOME BACK, PROBLEMÁTICO. 💋</p>
+        </section>
+      )}
       <a className="skip-link" href="#conteudo">
         Saltar para o conteúdo
       </a>
@@ -169,14 +225,14 @@ function Incident() {
                 </h1>
                 <p className="entry-description">
                   Fiz um site para te fazer uma pergunta. Infelizmente, primeiro tens de responder a
-                  quatro completamente inúteis.
+                  cinco completamente inúteis.
                 </p>
                 <button className="punk-button primary" onClick={() => go('quiz')}>
                   COMEÇAR ESTA PALHAÇADA <span aria-hidden="true">↗</span>
                 </button>
                 <p className="entry-duration mono">01–02 MINUTOS DA TUA VIDA. ZERO DEVOLUÇÕES.</p>
               </div>
-              <div className="poster" aria-label="Quatro perguntas, zero necessidade">
+              <div className="poster" aria-label="Cinco perguntas, zero necessidade">
                 <div className="poster-meta mono">
                   <span>
                     D&B. / DEPARTAMENTO <br />
@@ -187,6 +243,10 @@ function Incident() {
                     0001
                   </span>
                 </div>
+                <figure className="couple-photo">
+                  <img src="/photos/daniel-ben-kiss.jpeg" alt="Daniel e Ben juntos numa fotografia pessoal." />
+                  <figcaption>ARQUIVO PESSOAL / SEM CONTEXTO, CLARO</figcaption>
+                </figure>
                 <div className="poster-star" aria-hidden="true">
                   ✳
                 </div>
@@ -202,7 +262,7 @@ function Incident() {
                 <div className="poster-bottom">
                   <span className="barcode" aria-hidden="true" />
                   <span className="mono">
-                    4 PERGUNTAS. <br />0 NECESSIDADE.
+                    5 PERGUNTAS. <br />0 NECESSIDADE.
                   </span>
                 </div>
                 <span className="poster-scribble">
@@ -229,10 +289,10 @@ function Incident() {
               <span>O INTERROGATÓRIO / SEM VALOR LEGAL</span>
               <span aria-live="polite">{score.toLocaleString('pt-PT')} PONTOS INVENTADOS</span>
             </div>
-            <div className="quiz-progress" aria-label={`Pergunta ${question + 1} de 4`}>
+            <div className="quiz-progress" aria-label={`Pergunta ${question + 1} de ${questions.length}`}>
               <span className="question-index">
                 0{question + 1}
-                <small>/04</small>
+                <small>/0{questions.length}</small>
               </span>
               <div className="progress-segments" aria-hidden="true">
                 {questions.map((_, i) => (
@@ -240,6 +300,7 @@ function Incident() {
                 ))}
               </div>
             </div>
+            {question === 4 && <p className="question-kicker">INCIDENTE #02 — CINEMA</p>}
             <h1 ref={heading} tabIndex={-1} className="quiz-title">
               {q.title}
             </h1>
@@ -276,7 +337,7 @@ function Incident() {
                   : q.reactions[selection]}
               </p>
               <button className="punk-button primary" disabled={selection === null} onClick={next}>
-                {question === 3 ? (selection === 3 ? 'TERMINAR' : 'VER O VEREDITO') : 'SEGUINTE'}{' '}
+                {question === questions.length - 1 ? 'VER O VEREDITO' : 'SEGUINTE'}{' '}
                 <span aria-hidden="true">→</span>
               </button>
             </div>
@@ -311,6 +372,11 @@ function Incident() {
             </div>
             <p className="results-question">Como é que o Daniel ganhou sem jogar?</p>
             <p>Não sabemos. O sistema foi desenvolvido por ele.</p>
+            <aside className="spoiler-moment">POV: JÁ VISTE ISTO ANTES MAS EU DISSE QUE NÃO ESTAVA PRONTO.</aside>
+            <div className="moonlight-module">
+              <div><span className="mono">FAIXA DE APOIO EMOCIONAL</span><strong>Moonlight <i>— Ariana Grande</i></strong><a href="https://open.spotify.com/track/50Mc9BDUDzTxFwaPygZw6H" target="_blank" rel="noreferrer">Abrir a faixa no Spotify ↗</a></div>
+              <iframe title="Moonlight, de Ariana Grande, no Spotify" src="https://open.spotify.com/embed/track/50Mc9BDUDzTxFwaPygZw6H?utm_source=generator" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" />
+            </div>
             <button className="punk-button light" onClick={() => go('invite')}>
               PRONTO, O QUE É QUE QUERES? <span aria-hidden="true">↗</span>
             </button>
@@ -320,9 +386,6 @@ function Incident() {
 
         {stage === 'invite' && (
           <section className="invite-screen">
-            <p className="spoiler-leak">
-              POV: JÁ VISTE ISTO ANTES MAS EU DISSE QUE NÃO ESTAVA PRONTO
-            </p>
             <div className="chaos-controls" aria-label="Controlos das animações">
               <button type="button" aria-pressed={chaosPaused} onClick={toggleChaos}>
                 {chaosPaused ? 'RETOMAR O CAOS' : 'PAUSAR O CAOS'}
@@ -332,14 +395,14 @@ function Incident() {
               </button>
             </div>
             <h1 ref={heading} tabIndex={-1} className="chaos-title">
-              BENNNNNNN, QUERES IR A UM DATE COMIGO????
+              BENNNNNNNNN!!!<br /> QUERES IR A UM DATE COMIGO OUTRA VEZ????
             </h1>
-            <p className="chaos-date">25/11 · PALÁCIO DO GELO · JANTAR + CINEMA ÀS 21:00</p>
-            <p className="chaos-restaurant">JANTAMOS ONDE NOS APETECER PQ SOMOS LIVRES</p>
+            <p className="chaos-date">ENVOLVE EQUILÍBRIO QUESTIONÁVEL, COMIDA E A MINHA COMPANHIA ABSOLUTAMENTE NECESSÁRIA.</p>
+            <p className="chaos-restaurant">LOCAL: VISEU. &nbsp; DATA: A NEGOCIAR.</p>
             <p className="chaos-facts">
-              QUARTA-FEIRA, 25/11/2026 · PALÁCIO DO GELO, VISEU
+              PROBABILIDADE DE PASSARMOS VERGONHA: 100%.
               <br />
-              JANTAR ANTES DO CINEMA · RESTAURANTE À ESCOLHA LÁ DENTRO
+              DICAS: RODAS, FRIO DE DEZEMBRO, EU A TENTAR MANTER-ME DE PÉ.
             </p>
             <div className="chaos-pics" aria-hidden="true">
               <img src={memes.coracao.src} alt="" />
@@ -392,6 +455,10 @@ function Incident() {
               FODA-SE CONSEGUI UM SEGUNDO DATE
             </h1>
             <p className="accepted-message">Agora manda mensagem ao Daniel, seu parvo.</p>
+            <button className="chaos-button share-message" onClick={() => void shareCelebration()}>
+              ABRIR MENSAGEM PRÉ-PREENCHIDA
+            </button>
+            <p role="status">{shareStatus}</p>
             <p className="chaos-emoji" aria-hidden="true">
               💥 💋 ⭐ 🎉 🍾
             </p>

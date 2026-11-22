@@ -21,7 +21,7 @@ for (const path of output) {
   assert(!forbiddenPath.test(relative('dist', path)), `Private filename: ${path}`);
   assert(
     !/whatsapp image|kiss bish/i.test(relative('dist', path)),
-    `Private image shipped: ${path}`,
+    `Unreviewed personal photo shipped: ${path}`,
   );
   if (/\.(?:html|css|js|json|txt|svg)$/i.test(path)) {
     assert(
@@ -30,6 +30,10 @@ for (const path of output) {
     );
   }
 }
+assert(
+  output.some((path) => relative('dist', path).replaceAll('\\', '/') === 'photos/daniel-ben-kiss.jpeg'),
+  'The specifically authorized Daniel and Ben photo is missing.',
+);
 assert(
   output.some((path) => relative('dist', path) === 'admin.html'),
   'Admin entry is missing',

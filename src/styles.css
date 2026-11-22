@@ -1,13 +1,13 @@
 :root {
   font-family: Manrope, Arial, sans-serif;
-  color: #101f38;
-  background: #f4ead8;
+  color: #171016;
+  background: #fff8f2;
   font-synthesis: none;
   font-weight: 400;
-  --navy: #101f38;
-  --blue: #233e60;
-  --gold: #d7bb7b;
-  --ivory: #f4ead8;
+  --navy: #390f22;
+  --blue: #c51d3a;
+  --gold: #f3b9ca;
+  --ivory: #fff8f2;
   --ink-muted: #5e655f;
   --line: rgba(16, 31, 56, 0.18);
 }

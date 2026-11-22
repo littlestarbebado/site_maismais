@@ -7,6 +7,8 @@ import { telemetry } from '../lib/telemetry';
 
 function start() {
   render(<App />);
+  const skipIntro = screen.queryByRole('button', { name: /SALTAR INTRO/ });
+  if (skipIntro) fireEvent.click(skipIntro);
   fireEvent.click(screen.getByRole('button', { name: /COMEÇAR ESTA PALHAÇADA/ }));
 }
 function answer(index = 0) {
@@ -15,7 +17,7 @@ function answer(index = 0) {
 }
 function invite() {
   start();
-  for (let i = 0; i < 4; i++) answer();
+  for (let i = 0; i < questions.length; i++) answer();
   fireEvent.click(screen.getByRole('button', { name: /PRONTO, O QUE É QUE QUERES/ }));
 }
 function accept() {
@@ -24,13 +26,23 @@ function accept() {
 }
 
 describe('O Interrogatório', () => {
-  it('tem quatro perguntas, foco a cada etapa e resultado sem criar dados persistentes', () => {
+  it('tem cinco perguntas, foco a cada etapa e resultado sem criar dados persistentes', () => {
     const track = vi.spyOn(telemetry, 'track');
     start();
     expect(track).toHaveBeenCalledWith({ type: 'site_open', data: {} }, 'site-open');
-    expect(questions).toHaveLength(4);
-    for (let i = 0; i < 4; i++) {
+    expect(questions).toHaveLength(5);
+    expect(questions[4]).toMatchObject({
+      title: 'Durante a sessão, o Daniel falou mais do que devia?',
+      options: [
+        'Não, foi um espectador exemplar.',
+        'Sim. O filme tinha diálogos, mas ele tinha comentários.',
+        'Vim ver um filme e acabei num podcast.',
+        'Não me lembro do filme, só me lembro do Daniel a falar. 💀',
+      ],
+    });
+    for (let i = 0; i < questions.length; i++) {
       expect(screen.getByRole('heading', { name: questions[i].title })).toHaveFocus();
+      if (i === 4) expect(screen.getByText('INCIDENTE #02 — CINEMA')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /SEGUINTE|VER O VEREDITO/ })).toBeDisabled();
       answer();
     }
@@ -49,11 +61,7 @@ describe('O Interrogatório', () => {
       expect(screen.getByRole('status')).toHaveTextContent(questions[question].reactions[option]);
       for (const radio of screen.getAllByRole('radio')) expect(radio).toBeEnabled();
       fireEvent.click(screen.getByRole('button', { name: /SEGUINTE|VER O VEREDITO|TERMINAR/ }));
-      if (question === 3 && option === 3) {
-        expect(screen.getByRole('heading', { name: /TUDO BEM, BEN/ })).toHaveFocus();
-        expect(screen.queryByRole('button', { name: /MARCA LÁ/ })).not.toBeInTheDocument();
-        expect(screen.queryByRole('heading', { name: /RESULTADOS/ })).not.toBeInTheDocument();
-      } else expect(screen.getByRole('heading', { level: 1 })).toHaveFocus();
+      expect(screen.getByRole('heading', { level: 1 })).toHaveFocus();
     },
   );
 
@@ -78,21 +86,19 @@ describe('O Interrogatório', () => {
 
   it('mostra o convite real e permite pausar e saltar o caos', () => {
     const track = vi.spyOn(telemetry, 'track');
-    invite();
+    start();
+    for (let i = 0; i < questions.length; i++) answer();
+    expect(screen.getByText(/POV: JÁ VISTE ISTO ANTES MAS EU DISSE QUE NÃO ESTAVA PRONTO/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /PRONTO, O QUE É QUE QUERES/ }));
     expect(
-      screen.getByText('POV: JÁ VISTE ISTO ANTES MAS EU DISSE QUE NÃO ESTAVA PRONTO'),
+      screen.getByRole('heading', { name: /BENNNNNNNNN!!! QUERES IR A UM DATE COMIGO OUTRA VEZ/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: 'BENNNNNNN, QUERES IR A UM DATE COMIGO????' }),
+      screen.getByText(/ENVOLVE EQUILÍBRIO QUESTIONÁVEL, COMIDA/),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText('25/11 · PALÁCIO DO GELO · JANTAR + CINEMA ÀS 21:00'),
-    ).toBeInTheDocument();
-    expect(screen.getByText('JANTAMOS ONDE NOS APETECER PQ SOMOS LIVRES')).toBeInTheDocument();
-    expect(
-      screen.getByText(/QUARTA-FEIRA, 25\/11\/2026 · PALÁCIO DO GELO, VISEU/),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/RESTAURANTE À ESCOLHA LÁ DENTRO/)).toBeInTheDocument();
+    expect(screen.getByText(/LOCAL: VISEU\.\s+DATA: A NEGOCIAR\./)).toBeInTheDocument();
+    expect(screen.getByText(/PROBABILIDADE DE PASSARMOS VERGONHA: 100%/)).toBeInTheDocument();
+    expect(screen.getByText(/RODAS, FRIO DE DEZEMBRO/)).toBeInTheDocument();
     expect(screen.queryByText(/namorar comigo/i)).not.toBeInTheDocument();
     const pause = screen.getByRole('button', { name: 'PAUSAR O CAOS' });
     fireEvent.click(pause);
@@ -147,6 +153,8 @@ describe('O Interrogatório', () => {
     accept();
     expect(screen.getByRole('heading', { name: 'FODA-SE CONSEGUI UM SEGUNDO DATE' })).toHaveFocus();
     expect(screen.getByText('Agora manda mensagem ao Daniel, seu parvo.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ABRIR MENSAGEM PRÉ-PREENCHIDA' })).toBeEnabled();
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
     expect(screen.queryByText(/bilhete|reserva|namorar/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'PAUSAR O CAOS' })).toBeEnabled();
   });

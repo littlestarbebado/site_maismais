@@ -24,7 +24,7 @@ let browser;
 const results = [],
   errors = [],
   external = [];
-const widths = [320, 390, 768, 1440];
+const widths = [320, 390, 430, 768, 1440];
 const questions = [
   [
     'Eish. Não era preciso seres querido.',
@@ -43,7 +43,13 @@ const questions = [
     'Pronto, era só isso.',
     'Não prometo nada.',
     'Olha o crítico Michelin.',
-    'Tudo bem. O convite fica sem efeito.',
+    'Nota: nenhum equipamento de segurança incluído.',
+  ],
+  [
+    'Uma raridade documentada em direto.',
+    'Comentário do realizador, versão Daniel.',
+    'Episódio novo todas as semanas.',
+    'O filme era só a banda sonora do podcast.',
   ],
 ];
 
@@ -87,8 +93,10 @@ async function audit(page, view, width) {
     await page.screenshot({ path: `artifacts/${view}-${width}.png`, fullPage: true });
 }
 async function finishQuiz(page, refusal = false) {
+  if (await page.getByRole('button', { name: /SALTAR INTRO/ }).count())
+    await page.getByRole('button', { name: /SALTAR INTRO/ }).click();
   await page.getByRole('button', { name: /COMEÇAR ESTA PALHAÇADA/ }).click();
-  for (let q = 0; q < 4; q++) {
+  for (let q = 0; q < questions.length; q++) {
     await page
       .getByRole('radio')
       .nth(q === 3 && refusal ? 3 : 1)
@@ -129,14 +137,21 @@ try {
     });
     await context.route('**/*', (route) => {
       if (new URL(route.request().url()).origin === new URL(url).origin) return route.continue();
+      if (/\.(?:spotify\.com|scdn\.co|spotifycdn\.com)$/.test(new URL(route.request().url()).hostname))
+        return route.continue();
+      if (/\.sentry\.io$/.test(new URL(route.request().url()).hostname)) return route.abort();
       external.push(route.request().url());
       return route.abort();
     });
     const page = await context.newPage();
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(url);
+    if (width === 390) await page.screenshot({ path: 'artifacts/intro-390.png' });
+    if (await page.getByRole('button', { name: /SALTAR INTRO/ }).count())
+      await page.getByRole('button', { name: /SALTAR INTRO/ }).click();
     await page.evaluate(() => document.fonts.ready);
     await audit(page, 'entrada', width);
+    if (width === 390) await page.screenshot({ path: 'artifacts/ato-i-390.png', fullPage: true });
     assert.equal(
       await page.getByRole('button', { name: /SOM DESLIGADO/ }).getAttribute('aria-pressed'),
       'false',
@@ -144,7 +159,7 @@ try {
     // Keyboard entry and focus transition.
     await page.getByRole('button', { name: /COMEÇAR ESTA PALHAÇADA/ }).focus();
     await page.keyboard.press('Enter');
-    for (let q = 0; q < 4; q++) {
+    for (let q = 0; q < questions.length; q++) {
       assert(
         await page.getByRole('heading', { level: 1 }).evaluate((n) => n === document.activeElement),
       );
@@ -154,6 +169,10 @@ try {
           await page.getByRole('radio').nth(choice).check();
           assert.equal(await page.locator('.quiz-reaction').textContent(), questions[q][choice]);
           if (await page.getByRole('button', { name: 'Fechar reação' }).count()) {
+            await page.waitForFunction(() => {
+              const img = document.querySelector('.meme-reaction img');
+              return img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0;
+            });
             assert(
               await page
                 .locator('.meme-reaction img')
@@ -178,6 +197,7 @@ try {
     await audit(page, 'resultado', width);
     await page.getByRole('button', { name: /PRONTO, O QUE É QUE QUERES/ }).click();
     await audit(page, 'convite', width);
+    if (width === 390) await page.screenshot({ path: 'artifacts/convite-final-390.png', fullPage: true });
     if (width === 1440) {
       await page.getByRole('button', { name: 'PAUSAR O CAOS' }).click();
       assert.equal(
@@ -200,6 +220,9 @@ try {
     assert.equal(await page.evaluate(() => localStorage.length), 0);
     await page.reload();
     await finishQuiz(page, true);
+    await page.getByRole('button', { name: /PRONTO, O QUE É QUE QUERES/ }).click();
+    await page.getByRole('heading', { name: /BENNNNNNNNN/ }).waitFor();
+    await page.getByRole('button', { name: 'NÃO POSSO 😭' }).click();
     await page.getByRole('heading', { name: /TUDO BEM, BEN/ }).waitFor();
     await audit(page, 'recusa', width);
     assert.equal(await page.getByRole('button', { name: 'SIMMMMM 💋' }).count(), 0);
@@ -221,6 +244,9 @@ try {
   const adminContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await adminContext.route('**/*', (route) => {
     if (new URL(route.request().url()).origin === new URL(url).origin) return route.continue();
+    if (/\.(?:spotify\.com|scdn\.co|spotifycdn\.com)$/.test(new URL(route.request().url()).hostname))
+      return route.continue();
+    if (/\.sentry\.io$/.test(new URL(route.request().url()).hostname)) return route.abort();
     external.push(route.request().url());
     return route.abort();
   });
@@ -262,7 +288,7 @@ try {
     'Accessibility violations',
   );
   console.log(
-    `PASS: ${results.length} accessibility audits; 16 answers; both date responses; 4 widths; zero external requests.`,
+    `PASS: ${results.length} accessibility audits; ${questions.length * 4} answers; both date responses; ${widths.length} widths; zero external requests.`,
   );
 } finally {
   await browser?.close();
